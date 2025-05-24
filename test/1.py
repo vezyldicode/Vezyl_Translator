@@ -199,7 +199,7 @@ class Translator:
             print(f"Lỗi khi tải cấu hình: {e}")
 
     def clipboard_watcher(self):  # Add self
-        recent_value = ""
+        recent_value = pyperclip.paste()
         while True:
             tmp_value = pyperclip.paste()
             if tmp_value != recent_value and tmp_value.strip():
