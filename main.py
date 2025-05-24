@@ -23,28 +23,27 @@ import keyboard
 from googletrans import Translator as GoogleTranslator  # pip install googletrans==4.0.0-rc1
 from PIL import Image  # pip install pillow
 import sys
+from pystray import Icon, MenuItem, Menu
 
 class Translator:
     def __init__(self):
+        print("Vezyl Translator - Alpha 0.1")
         self.config_file = "config.json"
         self.Is_icon_showing = False
         self.load_config()
         self.translator = GoogleTranslator()
-        self.root = ctk.CTk()  # Tạo root ẩn để quản lý mainloop
+        self.root = ctk.CTk()
         self.root.withdraw()
         threading.Thread(target=self.clipboard_watcher, daemon=True).start()
         self.root.mainloop()
 
-    def translate_text(self, text):
-        try:
-            result = self.translator.translate(text, dest='vi')
-            return result.text
-        except Exception as e:
-            return f"Lỗi dịch: {e}"
-
-    def show_popup(self, text, x, y):
-        # Bảng tên ngôn ngữ và cờ
-        lang_display = {
+    def load_config(self):
+        """load file config"""
+        # Giá trị mặc định
+        self.hotkey = 'ctrl+shift+c'
+        self.dest_lang = 'vi'
+        self.font = ("JetBrains Mono", 18, "bold")
+        self.lang_display = {
             "en": "🇺🇸 English",
             "vi": "🇻🇳 Tiếng Việt",
             "ja": "🇯🇵 日本語",
@@ -55,19 +54,38 @@ class Translator:
             "de": "🇩🇪 Deutsch",
             "ru": "🇷🇺 Русский",
             "es": "🇪🇸 Español",
-            "th": "🇹🇭 ไทย",
-            # Thêm các ngôn ngữ khác nếu muốn
+            "th": "🇹🇭 ไทย"
         }
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    self.hotkey = config.get('hotkey', self.hotkey)
+                    self.dest_lang = config.get('dest_lang', self.dest_lang)
+                    self.font = tuple(config.get('font', list(self.font)))
+                    self.lang_display = config.get('lang_display', self.lang_display)
+        except Exception as e:
+            print(f"Lỗi khi tải cấu hình: {e}")
+
+    def translate_text(self, text):
+        try:
+            result = self.translator.translate(text, dest='vi')
+            return result.text
+        except Exception as e:
+            return f"Lỗi dịch: {e}"
+
+    def show_popup(self, text, x, y):
+        lang_display = self.lang_display
         lang_codes = list(lang_display.keys())
-        
-        # Tạo mapping ngược từ display text về code
         display_to_code = {v: k for k, v in lang_display.items()}
 
+        # Lấy ngôn ngữ đích từ config
+        dest_lang = self.dest_lang
+
         # Lấy ngôn ngữ gốc ban đầu
-        result = self.translator.translate(text, dest='vi')
+        result = self.translator.translate(text, dest=dest_lang)
         translated = result.text
         src_lang = result.src
-        dest_lang = 'vi'
         src_lang_display = lang_display.get(src_lang, src_lang)
         dest_lang_display = lang_display.get(dest_lang, dest_lang)
 
@@ -86,7 +104,6 @@ class Translator:
         )
         frame.pack(padx=8, pady=8, fill="both", expand=True)
 
-        # Combobox chọn ngôn ngữ gốc
         combo_src_lang = ctk.CTkComboBox(
             frame,
             values=[lang_display[code] for code in lang_codes],
@@ -95,7 +112,6 @@ class Translator:
         )
         combo_src_lang.pack(anchor="w", padx=10, pady=(10, 0))
 
-        # Hiển thị ngôn ngữ gốc
         label_src_lang = ctk.CTkLabel(
             frame,
             text=f"{src_lang_display}",
@@ -105,7 +121,6 @@ class Translator:
         )
         label_src_lang.pack(anchor="w", padx=10, pady=(0, 0))
 
-        # Hiển thị nội dung gốc
         label_src = ctk.CTkLabel(
             frame,
             text=text,
@@ -114,11 +129,10 @@ class Translator:
             padx=10, pady=5,
             wraplength=400,
             justify="left",
-            font=("JetBrains Mono", 18, "bold")
+            font=self.font
         )
         label_src.pack(anchor="w", padx=10, pady=(0, 10))
 
-        # Hiển thị ngôn ngữ đích
         label_dest_lang = ctk.CTkLabel(
             frame,
             text=f"{dest_lang_display}",
@@ -128,7 +142,6 @@ class Translator:
         )
         label_dest_lang.pack(anchor="w", padx=10, pady=(0, 0))
 
-        # Hiển thị nội dung đích
         label_trans = ctk.CTkLabel(
             frame,
             text=translated,
@@ -137,43 +150,36 @@ class Translator:
             padx=10, pady=5,
             wraplength=400,
             justify="left",
-            font=("JetBrains Mono", 18)
+            font=self.font
         )
         label_trans.pack(anchor="w", padx=10, pady=(0, 10))
 
-        # Hàm dịch lại với ngôn ngữ gốc mới
         def update_translation(new_src_lang):
             try:
-                result = self.translator.translate(text, src=new_src_lang, dest='vi')
+                # Dịch lại
+                result = self.translator.translate(text, src=new_src_lang, dest=dest_lang)
                 translated = result.text
                 src_lang_display = lang_display.get(new_src_lang, new_src_lang)
-                dest_lang_display = lang_display.get('vi', 'vi')
-                # Cập nhật lại các label
-                label_src_lang.configure(text=f"Ngôn ngữ gốc: {src_lang_display}")
-                label_dest_lang.configure(text=f"Ngôn ngữ đích: {dest_lang_display}")
-                label_trans.configure(text=translated)
+                dest_lang_display = lang_display.get(dest_lang, dest_lang)
+                # Cập nhật các label
+                label_src_lang.configure(text=f"{src_lang_display}") # ngôn ngữ gốc mới
+                label_dest_lang.configure(text=f"{dest_lang_display}") # ngôn ngữ đích mới
+                label_trans.configure(text=translated) # Hiển thị lại bản dịch
             except Exception as e:
-                label_trans.configure(text=f"Lỗi dịch: {e}")
+                label_trans.configure(text=f"Cannot translate: {e}")
 
-        # Event thay đổi ngôn ngữ gốc
         def on_combo_change(selected_value):
-            # Lấy code ngôn ngữ từ display text
             selected_lang_code = display_to_code.get(selected_value)
             if selected_lang_code:
                 update_translation(selected_lang_code)
 
-        # Gán command cho combobox
         combo_src_lang.configure(command=on_combo_change)
-        
-        # Đặt giá trị mặc định cho combobox
         try:
             combo_src_lang.set(lang_display[src_lang])
         except Exception:
             combo_src_lang.set(lang_display.get('en', '🇺🇸 English'))
 
-        # --- Quản lý thời gian tự động đóng ---
         close_job = [None]
-
         def schedule_close():
             if close_job[0]:
                 popup.after_cancel(close_job[0])
@@ -234,7 +240,7 @@ class Translator:
 
             # Bind sự kiện click cho label
             def on_click(event):
-                self.Is_icon_showing = False  # Đặt trạng thái không hiển thị
+                self.Is_icon_showing = False
                 icon_win.destroy()
                 self.show_popup(text, x, y+30)
 
@@ -255,19 +261,6 @@ class Translator:
             self.Is_icon_showing = False  # Đặt về False nếu có lỗi
             print(f"Lỗi show_icon: {e}", file=sys.stderr)
 
-    def load_config(self):
-        
-        """load file config"""
-        try:
-            if os.path.exists(self.config_file):
-                
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                    self.dest = config.get('hotkey', 'ctrl+shift+c')
-
-        except Exception as e:
-            print(f"Lỗi khi tải cấu hình: {e}")
-
     def clipboard_watcher(self):
         recent_value = pyperclip.paste()
         while True:
@@ -284,7 +277,19 @@ class Translator:
                 time.sleep(0.3)
 
 def main():
-    app = Translator()
+    threading.Thread(target=Translator, daemon=True).start()
+    icon_image = Image.open("assets/logo.ico")
+    menu = Menu(MenuItem("Thoát", on_quit))
+    icon = Icon("MyApp", icon_image, "Vezyl translator", menu)
+    icon.run()
+    # app = Translator()
+    
+
+def on_quit(icon, item):
+    icon.stop()
+    # sys.exit()
+
+
 
 if __name__ == "__main__":
     main()
