@@ -27,7 +27,7 @@ class Translator:
         self.config_file = "config.json"
         self.current_hotkey = 'ctrl+shift+c'
         self.load_config()
-        self.translator = GoogleTranslator()  # Thêm dòng này
+        self.translator = GoogleTranslator()
         threading.Thread(target=self.clipboard_watcher, daemon=True).start()
         while True:
             time.sleep(1)
@@ -92,6 +92,7 @@ class Translator:
         )
         combo_src_lang.pack(anchor="w", padx=10, pady=(10, 0))
 
+        # Hiển thị ngôn ngữ gốc
         label_src_lang = ctk.CTkLabel(
             frame,
             text=f"{src_lang_display}",
@@ -101,6 +102,7 @@ class Translator:
         )
         label_src_lang.pack(anchor="w", padx=10, pady=(0, 0))
 
+        # Hiển thị nội dung gốc
         label_src = ctk.CTkLabel(
             frame,
             text=text,
@@ -113,6 +115,7 @@ class Translator:
         )
         label_src.pack(anchor="w", padx=10, pady=(0, 10))
 
+        # Hiển thị ngôn ngữ đích
         label_dest_lang = ctk.CTkLabel(
             frame,
             text=f"{dest_lang_display}",
@@ -122,6 +125,7 @@ class Translator:
         )
         label_dest_lang.pack(anchor="w", padx=10, pady=(0, 0))
 
+        # Hiển thị nội dung đích
         label_trans = ctk.CTkLabel(
             frame,
             text=translated,
