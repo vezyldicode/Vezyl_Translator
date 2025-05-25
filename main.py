@@ -228,6 +228,17 @@ class MainWindow(ctk.CTkToplevel):
         main_window_instance.lift()
         main_window_instance.focus_force()
 
+    def fill_homepage_text(self, text):
+        # Tìm tab home, điền text vào textbox nguồn nếu đang ở tab home
+        for widget in self.content_frame.winfo_children():
+            if isinstance(widget, ctk.CTkFrame):
+                for child in widget.winfo_children():
+                    if isinstance(child, ctk.CTkFrame):
+                        for subchild in child.winfo_children():
+                            if isinstance(subchild, ctk.CTkTextbox):
+                                subchild.delete("1.0", "end")
+                                subchild.insert("1.0", text)
+                                return
 
 class Translator:
     def __init__(self):
@@ -285,6 +296,8 @@ class Translator:
             return f"Lỗi dịch: {e}"
 
     def show_popup(self, text, x, y):
+        global last_translated_text
+        last_translated_text = text
         lang_display = self.lang_display
         lang_codes = list(lang_display.keys())
         display_to_code = {v: k for k, v in lang_display.items()}
@@ -412,54 +425,78 @@ class Translator:
         popup.mainloop()
 
     def show_icon(self, text, x, y):
+        global last_translated_text
         # Hàm này phải luôn được gọi từ main thread!
         try:
-            # Đặt trạng thái đang hiển thị icon
             self.Is_icon_showing = True
+
+            # Lấy kích thước màn hình
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            icon_size = self.icon_size
+
+            # Xác định vị trí icon đối xứng quanh chuột
+            # Nếu chuột ở nửa trái -> icon bên phải chuột, ngược lại bên trái
+            # Nếu chuột ở nửa trên -> icon dưới chuột, ngược lại trên chuột
+            if x < screen_width // 2:
+                icon_x = x + 30
+            else:
+                icon_x = x - icon_size - 30
+            if y < screen_height // 2:
+                icon_y = y + 30
+            else:
+                icon_y = y - icon_size - 30
+
+            # Đảm bảo icon không ra ngoài màn hình
+            icon_x = max(0, min(icon_x, screen_width - icon_size))
+            icon_y = max(0, min(icon_y, screen_height - icon_size))
+
             icon_win = ctk.CTkToplevel(self.root)
             icon_win.wm_overrideredirect(True)
             icon_win.wm_attributes('-topmost', True)
-
-            icon_size = self.icon_size
-            icon_win.wm_geometry(f"{icon_size}x{icon_size}+{x}+{y}")
+            icon_win.wm_geometry(f"{icon_size}x{icon_size}+{icon_x}+{icon_y}")
 
             # Load icon từ file và resize thành hình vuông
             img = Image.open(os.path.join("assets", "logo.png"))
-            # Crop thành hình vuông nếu cần
             width, height = img.size
             if width != height:
                 size = min(width, height)
                 left = (width - size) // 2
                 top = (height - size) // 2
                 img = img.crop((left, top, left + size, top + size))
-            
             img = img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(icon_size -15, icon_size-15))
+            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(icon_size - 15, icon_size - 15))
 
-            # Tạo label để hiển thị hình ảnh
             img_label = ctk.CTkLabel(
                 icon_win,
                 text="",
                 image=ctk_img,
                 width=icon_size,
                 height=icon_size,
-                corner_radius=0,  # Không bo góc để hình vuông vức
-                fg_color="transparent"  # Nền trong suốt
+                corner_radius=0,
+                fg_color="transparent"
             )
             img_label.pack(fill="both", expand=True, padx=0, pady=0)
 
-            # Bind sự kiện click cho label
             def on_click(event):
-                print(f"Clicked on icon at ({x}, {y})")
+                global last_translated_text
+                print(f"Clicked on icon at ({icon_x}, {icon_y})")
                 self.Is_icon_showing = False
                 icon_win.withdraw()
-                self.show_popup(text, x, y+30)
+                # Popup cũng đối xứng quanh chuột như icon
+                popup_x = icon_x
+                popup_y = icon_y + icon_size + 10 if y < screen_height // 2 else icon_y - icon_size - 10
+                if len(text) > 500:
+                        last_translated_text = text
+                        def open_homepage():
+                            show_homepage()
+                        self.root.after(0, open_homepage)
+                else:
+                    self.show_popup(text, popup_x, popup_y)
 
             img_label.bind("<Button-1>", on_click)
-            # Thêm cursor pointer khi hover
             img_label.configure(cursor="hand2")
 
-            # Hàm destroy icon và cập nhật trạng thái
             def destroy_icon():
                 self.Is_icon_showing = False
                 icon_win.destroy()
@@ -467,13 +504,13 @@ class Translator:
             icon_win.after(5000, destroy_icon)
             icon_win.lift()
             icon_win.after(100, lambda: icon_win.attributes('-alpha', 0.9))
-            
+
         except Exception as e:
-            self.Is_icon_showing = False  # Đặt về False nếu có lỗi
+            self.Is_icon_showing = False
             print(f"Lỗi show_icon: {e}", file=sys.stderr)
 
     def clipboard_watcher(self):
-        global tmp_clipboard
+        global tmp_clipboard, last_translated_text, main_window_instance
         recent_value = pyperclip.paste()
         while True:
             if self.Is_icon_showing:
@@ -482,30 +519,35 @@ class Translator:
             else:
                 tmp_value = pyperclip.paste()
                 if tmp_value != recent_value and tmp_value.strip():
-                    print(f"Clipboard changed: {tmp_value}")
-                    print(f"Previous value: {recent_value}")
                     recent_value = tmp_value
                     tmp_clipboard = recent_value
                     x, y = pyautogui.position()
-                    # Gọi show_icon trên main thread
-                    self.root.after(0, self.show_icon, tmp_value, x + 10, y + 10)
+                    self.root.after(0, self.show_icon, tmp_value, x, y)
+                    
+                        
                 time.sleep(0.5)
 
 main_window_instance = None  # Biến toàn cục lưu MainWindow
 translator_instance = None   # Biến toàn cục lưu Translator
 tmp_clipboard = ""
+last_translated_text = ""  # Biến toàn cục lưu bản dịch cuối
 
 def show_homepage():
-    global main_window_instance, translator_instance
+    global main_window_instance, translator_instance, last_translated_text
     if main_window_instance is not None:
         try:
-            # Đảm bảo chạy trên main thread
             root = main_window_instance if hasattr(main_window_instance, 'after') else translator_instance.root
             def bring_window_to_front():
                 main_window_instance.state('normal')
                 main_window_instance.deiconify()
                 main_window_instance.lift()
                 main_window_instance.focus_force()
+                main_window_instance.show_tab_home()
+                # Đợi 100ms cho UI dựng xong rồi mới fill text
+                def fill_text_later():
+                    if last_translated_text != "":
+                        main_window_instance.fill_homepage_text(last_translated_text)
+                main_window_instance.after(100, fill_text_later)
             root.after(0, bring_window_to_front)
         except Exception as e:
             print(f"Loi khi bat cua so chinh: {e}")
@@ -546,7 +588,7 @@ def on_homepage(icon, item):
     global main_window_instance
     if main_window_instance is not None:
         try:
-            main_window_instance.after(0, main_window_instance.show)
+            main_window_instance.after(0, show_homepage)
         except Exception as e:
             print(f"Lỗi khi hiện cửa sổ chính: {e}")
     else:
