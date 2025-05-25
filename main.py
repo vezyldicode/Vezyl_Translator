@@ -3,7 +3,7 @@
  * Version: alpha 0.1
  * Author: Tuan Viet Nguyen
  * Website: https://github.com/vezyldicode
- * Date: Feb 11, 2025
+ * Date:  Mai 24, 2025
  * Description: 
  * 
  * This code is copyrighted by Tuan Viet Nguyen.
@@ -25,6 +25,143 @@ from PIL import Image  # pip install pillow
 import sys
 from pystray import Icon, MenuItem, Menu
 
+class MainWindow(ctk.CTkToplevel):
+    def __init__(self, translator: 'Translator'):
+        super().__init__()
+        self.translator = translator
+        self.title("Vezyl Translator")
+        self.geometry("900x600")
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.resizable(True, True)  # Cho phép resize
+        self.is_fullscreen = False
+        self.bind("<F11>", self.toggle_fullscreen)
+        self.bind("<Escape>", self.exit_fullscreen)
+        self.tabs = {
+            "Trang chủ": self.show_tab_home,
+            "Lịch sử": self.show_tab_history,
+            "Yêu thích": self.show_tab_favorite,
+            "Cài đặt": self.open_settings
+        }
+        self.build_ui()
+        self.show_tab_home()
+
+    def build_ui(self):
+        # Nav bar
+        self.nav_bar = ctk.CTkFrame(self, width=70, fg_color="#23272f")
+        self.nav_bar.pack(side="left", fill="y")
+        self.nav_buttons = {}
+
+        icons = [
+            ("assets/logo.png", "Trang chủ"),
+            ("assets/history.png", "Lịch sử"),
+            ("assets/favorite.png", "Yêu thích"),
+        ]
+        for icon_path, tab_name in icons:
+            try:
+                img = ctk.CTkImage(light_image=Image.open(icon_path), size=(32, 32))
+            except Exception:
+                img = None
+            btn = ctk.CTkButton(
+                self.nav_bar, image=img, text="", width=60, height=60,
+                fg_color="transparent", hover_color="#444",
+                command=lambda t=tab_name: self.show_tab(t)
+            )
+            btn.pack(pady=10)
+            self.nav_buttons[tab_name] = btn
+
+        self.nav_bar.pack_propagate(False)
+
+        # Settings icon ở dưới cùng
+        try:
+            settings_img = ctk.CTkImage(light_image=Image.open("assets/settings.png"), size=(32, 32))
+        except Exception:
+            settings_img = None
+        settings_btn = ctk.CTkButton(
+            self.nav_bar, image=settings_img, text="", width=60, height=60,
+            fg_color="transparent", hover_color="#444",
+            command=lambda: self.show_tab("Cài đặt")
+        )
+        settings_btn.pack(side="bottom", pady=20)
+        self.nav_buttons["Cài đặt"] = settings_btn
+
+        # Content frame
+        self.content_frame = ctk.CTkFrame(self, fg_color="#2d323e")
+        self.content_frame.pack(side="left", fill="both", expand=True)
+
+    def show_tab(self, tab_name):
+        # Xóa nội dung cũ
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        # Gọi hàm tab tương ứng
+        if tab_name in self.tabs:
+            self.tabs[tab_name]()
+        else:
+            self.show_tab_home()
+
+    def show_tab_home(self):
+        label = ctk.CTkLabel(self.content_frame, text="Đây là Trang chủ", font=("JetBrains Mono", 20, "bold"))
+        label.pack(pady=40)
+
+    def show_tab_history(self):
+        label = ctk.CTkLabel(self.content_frame, text="Lịch sử dịch", font=("JetBrains Mono", 20, "bold"))
+        label.pack(pady=40)
+
+    def show_tab_favorite(self):
+        label = ctk.CTkLabel(self.content_frame, text="Các bản dịch yêu thích", font=("JetBrains Mono", 20, "bold"))
+        label.pack(pady=40)
+
+    def open_settings(self):
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        # Hiển thị các trường config
+        config = {
+            "always_show_transtale": ("Hiện icon popup", bool),
+            "icon_size": ("Kích thước icon", int),
+            "hotkey": ("Hotkey", str),
+            "dest_lang": ("Ngôn ngữ đích", str),
+        }
+        entries = {}
+        row = 0
+        for key, (label_text, typ) in config.items():
+            ctk.CTkLabel(self.content_frame, text=label_text, anchor="w").grid(row=row, column=0, sticky="w", padx=10, pady=5)
+            val = getattr(self.translator, key)
+            entry = ctk.CTkEntry(self.content_frame)
+            entry.insert(0, str(val))
+            entry.grid(row=row, column=1, padx=10, pady=5)
+            entries[key] = (entry, typ)
+            row += 1
+
+        def save_config():
+            try:
+                with open(self.translator.config_file, "r", encoding="utf-8") as f:
+                    config_data = json.load(f)
+            except Exception:
+                config_data = {}
+            for key, (entry, typ) in entries.items():
+                val = entry.get()
+                if typ is bool:
+                    val = val.lower() in ("1", "true", "yes", "on")
+                elif typ is int:
+                    val = int(val)
+                config_data[key] = val
+            with open(self.translator.config_file, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=2)
+            self.translator.load_config()
+
+        save_btn = ctk.CTkButton(self.content_frame, text="Lưu cài đặt", command=save_config)
+        save_btn.grid(row=row, column=0, columnspan=2, pady=20)
+
+    def toggle_fullscreen(self, event=None):
+        self.is_fullscreen = not self.is_fullscreen
+        self.attributes("-fullscreen", self.is_fullscreen)
+
+    def exit_fullscreen(self, event=None):
+        self.is_fullscreen = False
+        self.attributes("-fullscreen", False)
+
+    def on_close(self):
+        self.withdraw()  # Ẩn cửa sổ, không thoát app
+
 class Translator:
     def __init__(self):
         print("Vezyl Translator - Alpha 0.1")
@@ -34,12 +171,16 @@ class Translator:
         self.translator = GoogleTranslator()
         self.root = ctk.CTk()
         self.root.withdraw()
+        self.main_window = MainWindow(self)
+        self.main_window.deiconify()
         threading.Thread(target=self.clipboard_watcher, daemon=True).start()
         self.root.mainloop()
 
     def load_config(self):
         """load file config"""
         # Giá trị mặc định
+        self.always_show_transtale = True
+        self.icon_size = 60
         self.hotkey = 'ctrl+shift+c'
         self.dest_lang = 'vi'
         self.font = ("JetBrains Mono", 18, "bold")
@@ -60,6 +201,8 @@ class Translator:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
+                    self.always_show_transtale = config.get('always_show_transtale', self.always_show_transtale)
+                    self.icon_size = config.get('icon_size', self.icon_size)
                     self.hotkey = config.get('hotkey', self.hotkey)
                     self.dest_lang = config.get('dest_lang', self.dest_lang)
                     self.font = tuple(config.get('font', list(self.font)))
@@ -209,8 +352,8 @@ class Translator:
             icon_win = ctk.CTkToplevel(self.root)
             icon_win.wm_overrideredirect(True)
             icon_win.wm_attributes('-topmost', True)
-            # 50mm ≈ 189 pixels (ở 96 DPI)
-            icon_size = 60
+
+            icon_size = self.icon_size
             icon_win.wm_geometry(f"{icon_size}x{icon_size}+{x}+{y}")
 
             # Load icon từ file và resize thành hình vuông
