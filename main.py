@@ -99,8 +99,67 @@ class MainWindow(ctk.CTkToplevel):
             self.show_tab_home()
 
     def show_tab_home(self):
-        label = ctk.CTkLabel(self.content_frame, text="Đây là Trang chủ", font=("JetBrains Mono", 20, "bold"))
-        label.pack(pady=40)
+        # Xóa nội dung cũ
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+
+        frame = ctk.CTkFrame(self.content_frame)
+        frame.pack(fill="both", expand=True, padx=40, pady=40)
+
+        left_frame = ctk.CTkFrame(frame)
+        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+        right_frame = ctk.CTkFrame(frame)
+        right_frame.pack(side="left", fill="both", expand=True, padx=(10, 0))
+
+        # Label ngôn ngữ nguồn (tự động phát hiện)
+        src_label = ctk.CTkLabel(left_frame, text="Tự động phát hiện", font=("JetBrains Mono", 14, "italic"))
+        src_label.pack(anchor="w", pady=(0, 5))
+
+        # Textbox nhập nội dung
+        src_text = ctk.CTkTextbox(left_frame, height=200, font=self.translator.font, wrap="word")
+        src_text.pack(fill="both", expand=True)
+
+        # Label ngôn ngữ đích
+        dest_lang = self.translator.dest_lang
+        lang_display = self.translator.lang_display
+        dest_label = ctk.CTkLabel(right_frame, text=lang_display.get(dest_lang, dest_lang), font=("JetBrains Mono", 14, "italic"))
+        dest_label.pack(anchor="w", pady=(0, 5))
+
+        # Textbox kết quả dịch (readonly)
+        dest_text = ctk.CTkTextbox(right_frame, height=200, font=self.translator.font, wrap="word", state="disabled")
+        dest_text.pack(fill="both", expand=True)
+
+        # Hàm dịch tự động khi thay đổi nội dung
+        def on_text_change(event=None):
+            text = src_text.get("1.0", "end").strip()
+            if text:
+                try:
+                    result = self.translator.translator.translate(text, dest=dest_lang)
+                    translated = result.text
+                    src = result.src
+                    src_label.configure(text=lang_display.get(src, src))
+                except Exception as e:
+                    translated = f"Lỗi dịch: {e}"
+                dest_text.configure(state="normal")
+                dest_text.delete("1.0", "end")
+                dest_text.insert("1.0", translated)
+                dest_text.configure(state="disabled")
+            else:
+                src_label.configure(text="Tự động phát hiện")
+                dest_text.configure(state="normal")
+                dest_text.delete("1.0", "end")
+                dest_text.configure(state="disabled")
+
+        # Theo dõi thay đổi nội dung (debounce 300ms)
+        def debounce_text_change(*args):
+            if hasattr(debounce_text_change, "after_id") and debounce_text_change.after_id:
+                src_text.after_cancel(debounce_text_change.after_id)
+            debounce_text_change.after_id = src_text.after(300, on_text_change)
+        debounce_text_change.after_id = None
+
+        src_text.bind("<<Modified>>", lambda e: (src_text.edit_modified(0), debounce_text_change()))
+        src_text.bind("<KeyRelease>", lambda e: debounce_text_change())
 
     def show_tab_history(self):
         label = ctk.CTkLabel(self.content_frame, text="Lịch sử dịch", font=("JetBrains Mono", 20, "bold"))
@@ -419,14 +478,45 @@ class Translator:
                     self.root.after(0, self.show_icon, tmp_value, x + 10, y + 10)
                 time.sleep(0.3)
 
+main_window_instance = None  # Biến toàn cục lưu MainWindow
+translator_instance = None   # Biến toàn cục lưu Translator
+
+def show_homepage():
+    global main_window_instance, translator_instance
+    if main_window_instance is not None:
+        try:
+            main_window_instance.deiconify()
+            main_window_instance.lift()
+            main_window_instance.focus_force()
+            return
+        except Exception:
+            main_window_instance = None
+    # Nếu chưa có hoặc đã bị đóng, tạo mới
+    if translator_instance is None:
+        translator_instance = Translator()
+    main_window_instance = MainWindow(translator_instance)
+    main_window_instance.deiconify()
+    main_window_instance.lift()
+    main_window_instance.focus_force()
+
 def main():
-    threading.Thread(target=Translator, daemon=True).start()
+    global translator_instance, main_window_instance
+    def start_translator():
+        global translator_instance, main_window_instance
+        translator_instance = Translator()
+        main_window_instance = translator_instance.main_window
+    threading.Thread(target=start_translator, daemon=True).start()
     icon_image = Image.open("assets/logo.ico")
-    menu = Menu(MenuItem("Thoát", on_quit))
+    menu = Menu(
+        MenuItem("Homepage", on_homepage),
+        MenuItem("Thoát", on_quit)
+    )
     icon = Icon("MyApp", icon_image, "Vezyl translator", menu)
     icon.run()
-    # app = Translator()
-    
+
+def on_homepage(icon, item):
+    # Hàm callback cho menu tray
+    show_homepage()
 
 def on_quit(icon, item):
     icon.stop()
