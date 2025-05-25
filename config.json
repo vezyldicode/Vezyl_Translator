@@ -3,7 +3,7 @@
   "always_show_transtale": false,
   "icon_size": 60,
   "hotkey": "ctrl+shift+c",
-  "dest_lang": "vi",
+  "dest_lang": "en",
   "font": [
     "JetBrains Mono",
     18,

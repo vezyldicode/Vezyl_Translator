@@ -31,6 +31,8 @@ class MainWindow(ctk.CTkToplevel):
         self.translator = translator
         self.title("Vezyl Translator")
         self.geometry("900x600")
+        # # Gọi hàm on_close khi thu nhỏ
+        # self.bind("<Unmap>", lambda event: self.on_close() if self.state() == "iconic" else None)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.resizable(True, True)  # Cho phép resize
         self.is_fullscreen = False
@@ -99,6 +101,7 @@ class MainWindow(ctk.CTkToplevel):
             self.show_tab_home()
 
     def show_tab_home(self):
+        global tmp_clipboard
         # Xóa nội dung cũ
         for widget in self.content_frame.winfo_children():
             widget.destroy()
@@ -219,7 +222,12 @@ class MainWindow(ctk.CTkToplevel):
         self.attributes("-fullscreen", False)
 
     def on_close(self):
-        self.withdraw()  # Ẩn cửa sổ, không thoát app
+        self.withdraw()
+    def show(self):
+        self.deiconify()
+        main_window_instance.lift()
+        main_window_instance.focus_force()
+
 
 class Translator:
     def __init__(self):
@@ -228,12 +236,12 @@ class Translator:
         self.Is_icon_showing = False
         self.load_config()
         self.translator = GoogleTranslator()
+        # Không tạo self.root = ctk.CTk() và không tạo MainWindow ở đây
+        # Clipboard watcher có thể cần truyền root/main_window nếu cần gọi GUI
+        # Nếu cần, truyền main_window_instance vào sau khi khởi tạo
         self.root = ctk.CTk()
         self.root.withdraw()
-        self.main_window = MainWindow(self)
-        self.main_window.deiconify()
         threading.Thread(target=self.clipboard_watcher, daemon=True).start()
-        self.root.mainloop()
 
     def load_config(self):
         """load file config"""
@@ -442,8 +450,9 @@ class Translator:
 
             # Bind sự kiện click cho label
             def on_click(event):
+                print(f"Clicked on icon at ({x}, {y})")
                 self.Is_icon_showing = False
-                icon_win.destroy()
+                icon_win.withdraw()
                 self.show_popup(text, x, y+30)
 
             img_label.bind("<Button-1>", on_click)
@@ -464,6 +473,7 @@ class Translator:
             print(f"Lỗi show_icon: {e}", file=sys.stderr)
 
     def clipboard_watcher(self):
+        global tmp_clipboard
         recent_value = pyperclip.paste()
         while True:
             if self.Is_icon_showing:
@@ -472,51 +482,75 @@ class Translator:
             else:
                 tmp_value = pyperclip.paste()
                 if tmp_value != recent_value and tmp_value.strip():
+                    print(f"Clipboard changed: {tmp_value}")
+                    print(f"Previous value: {recent_value}")
                     recent_value = tmp_value
+                    tmp_clipboard = recent_value
                     x, y = pyautogui.position()
                     # Gọi show_icon trên main thread
                     self.root.after(0, self.show_icon, tmp_value, x + 10, y + 10)
-                time.sleep(0.3)
+                time.sleep(0.5)
 
 main_window_instance = None  # Biến toàn cục lưu MainWindow
 translator_instance = None   # Biến toàn cục lưu Translator
+tmp_clipboard = ""
 
 def show_homepage():
     global main_window_instance, translator_instance
     if main_window_instance is not None:
         try:
-            main_window_instance.deiconify()
-            main_window_instance.lift()
-            main_window_instance.focus_force()
-            return
-        except Exception:
-            main_window_instance = None
-    # Nếu chưa có hoặc đã bị đóng, tạo mới
-    if translator_instance is None:
-        translator_instance = Translator()
-    main_window_instance = MainWindow(translator_instance)
-    main_window_instance.deiconify()
-    main_window_instance.lift()
-    main_window_instance.focus_force()
+            # Đảm bảo chạy trên main thread
+            root = main_window_instance if hasattr(main_window_instance, 'after') else translator_instance.root
+            def bring_window_to_front():
+                main_window_instance.state('normal')
+                main_window_instance.deiconify()
+                main_window_instance.lift()
+                main_window_instance.focus_force()
+            root.after(0, bring_window_to_front)
+        except Exception as e:
+            print(f"Loi khi bat cua so chinh: {e}")
+    else:
+        print("Cua so chinh chua duoc khoi tao")
 
 def main():
     global translator_instance, main_window_instance
-    def start_translator():
-        global translator_instance, main_window_instance
-        translator_instance = Translator()
-        main_window_instance = translator_instance.main_window
-    threading.Thread(target=start_translator, daemon=True).start()
-    icon_image = Image.open("assets/logo.ico")
-    menu = Menu(
-        MenuItem("Homepage", on_homepage),
-        MenuItem("Thoát", on_quit)
-    )
-    icon = Icon("MyApp", icon_image, "Vezyl translator", menu)
-    icon.run()
+
+    # Khởi tạo Translator trước, nhưng chưa chạy clipboard watcher
+    translator_instance = Translator()
+
+    # Khởi tạo MainWindow trên main thread, truyền translator vào
+    main_window_instance = MainWindow(translator_instance)
+
+    # Gán main_window_instance cho translator để dùng after
+    translator_instance.main_window = main_window_instance
+
+    # Chạy clipboard watcher ở thread phụ
+    # threading.Thread(target=translator_instance.clipboard_watcher, daemon=True).start()
+
+    # Khởi tạo tray icon ở thread phụ
+    def tray_icon_thread():
+        icon_image = Image.open("assets/logo.ico")
+        menu = Menu(
+            MenuItem("Homepage", on_homepage),
+            MenuItem("Thoát", on_quit)
+        )
+        icon = Icon("MyApp", icon_image, "Vezyl translator", menu)
+        icon.run()
+    threading.Thread(target=tray_icon_thread, daemon=True).start()
+
+    # Chạy mainloop của MainWindow (main thread)
+    main_window_instance.mainloop()
+
 
 def on_homepage(icon, item):
-    # Hàm callback cho menu tray
-    show_homepage()
+    global main_window_instance
+    if main_window_instance is not None:
+        try:
+            main_window_instance.after(0, main_window_instance.show)
+        except Exception as e:
+            print(f"Lỗi khi hiện cửa sổ chính: {e}")
+    else:
+        print("Cửa sổ chính chưa được khởi tạo")
 
 def on_quit(icon, item):
     icon.stop()
@@ -526,3 +560,4 @@ def on_quit(icon, item):
 
 if __name__ == "__main__":
     main()
+
