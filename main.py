@@ -208,11 +208,11 @@ class MainWindow(ctk.CTkToplevel):
         src_text.bind("<KeyRelease>", lambda e: debounce_text_change())
 
     def show_tab_history(self):
-        label = ctk.CTkLabel(self.content_frame, text="Lịch sử dịch", font=(self.translator.font, 20, "bold"))
+        label = ctk.CTkLabel(self.content_frame, text="Comming on version beta 0.1", font=(self.translator.font, 20, "bold"))
         label.pack(pady=40)
 
     def show_tab_favorite(self):
-        label = ctk.CTkLabel(self.content_frame, text="Các bản dịch yêu thích", font=(self.translator.font, 20, "bold"))
+        label = ctk.CTkLabel(self.content_frame, text="Comming on version beta 0.2", font=(self.translator.font, 20, "bold"))
         label.pack(pady=40)
 
     def open_settings(self):
@@ -741,6 +741,15 @@ def show_homepage():
 def main():
     global translator_instance, main_window_instance
 
+    app = ctk.CTk()
+
+    # Đặt icon cho cửa sổ (taskbar)
+    icon_path = os.path.join('assets', 'logo.ico')
+    if getattr(sys, 'frozen', False):  # Khi chạy .exe
+        icon_path = os.path.join(sys._MEIPASS, 'assets', 'logo.ico')
+    else:  # Khi chạy .py
+        icon_path = os.path.join('assets', 'logo.ico')
+
     # Khởi tạo Translator trước, nhưng chưa chạy clipboard watcher
     translator_instance = Translator()
 
@@ -780,7 +789,7 @@ def on_homepage(icon, item):
 
 def on_quit(icon, item):
     icon.stop()
-    # sys.exit()
+    os._exit(0)
 
 
 

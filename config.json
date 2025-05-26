@@ -9,8 +9,8 @@
   "max_length_on_popup": 500,
   "max_history_items": 20,
   "hotkey": "ctrl+shift+c",
-  "dest_lang": "en",
-  "font": "Consolas",
+  "dest_lang": "vi",
+  "font": "JetBrains Mono",
   "default_fonts": [
     "JetBrains Mono",
     "Consolas",
