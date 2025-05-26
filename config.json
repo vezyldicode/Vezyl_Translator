@@ -1,6 +1,12 @@
 {
   "start_at_startup": true,
+  "show_homepage_at_startup": true,
   "always_show_transtale": false,
+  "save_translate_history": true,
+  "icon_dissapear_after": 5,
+  "popup_dissapear_after": 5,
+  "max_history_items": 20,
+  "max_length_on_popup": 500,
   "icon_size": 60,
   "hotkey": "ctrl+shift+c",
   "dest_lang": "vi",

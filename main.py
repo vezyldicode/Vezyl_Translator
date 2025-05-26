@@ -1,6 +1,6 @@
 """
  * Program: Vezyl Translator
- * Version: alpha 0.1
+ * Version: alpha 0.2
  * Author: Tuan Viet Nguyen
  * Website: https://github.com/vezyldicode
  * Date:  Mai 24, 2025
@@ -106,42 +106,85 @@ class MainWindow(ctk.CTkToplevel):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
-        frame = ctk.CTkFrame(self.content_frame)
-        frame.pack(fill="both", expand=True, padx=40, pady=40)
-
-        left_frame = ctk.CTkFrame(frame)
-        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
-
-        right_frame = ctk.CTkFrame(frame)
-        right_frame.pack(side="left", fill="both", expand=True, padx=(10, 0))
-
-        # Label ngôn ngữ nguồn (tự động phát hiện)
-        src_label = ctk.CTkLabel(left_frame, text="Tự động phát hiện", font=("JetBrains Mono", 14, "italic"))
-        src_label.pack(anchor="w", pady=(0, 5))
-
-        # Textbox nhập nội dung
-        src_text = ctk.CTkTextbox(left_frame, height=200, font=self.translator.font, wrap="word")
-        src_text.pack(fill="both", expand=True)
-
-        # Label ngôn ngữ đích
-        dest_lang = self.translator.dest_lang
         lang_display = self.translator.lang_display
-        dest_label = ctk.CTkLabel(right_frame, text=lang_display.get(dest_lang, dest_lang), font=("JetBrains Mono", 14, "italic"))
-        dest_label.pack(anchor="w", pady=(0, 5))
+        lang_codes = list(lang_display.keys())
 
-        # Textbox kết quả dịch (readonly)
-        dest_text = ctk.CTkTextbox(right_frame, height=200, font=self.translator.font, wrap="word", state="disabled")
-        dest_text.pack(fill="both", expand=True)
+        # --- Layout tối giản: nhập trên, dịch dưới ---
+        frame = ctk.CTkFrame(self.content_frame, fg_color="#23272f")
+        frame.pack(fill="both", expand=True, padx=60, pady=60)
 
-        # Hàm dịch tự động khi thay đổi nội dung
+        frame.grid_rowconfigure(1, weight=1)
+        frame.grid_rowconfigure(2, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+
+        # Combobox chọn ngôn ngữ nguồn
+        src_lang_var = tk.StringVar(value="auto")
+        src_lang_combo = ctk.CTkComboBox(
+            frame,
+            values=["Tự động phát hiện"] + [lang_display[code] for code in lang_codes],
+            width=180,
+            state="readonly",
+            variable=src_lang_var,
+            font=("JetBrains Mono", 13),
+            command=lambda _: on_text_change()  # Gọi lại dịch khi chọn ngôn ngữ nguồn
+        )
+        src_lang_combo.grid(row=0, column=0, sticky="w", pady=(0, 5))
+        src_lang_combo.set("Tự động phát hiện")
+
+        # Textbox nhập nội dung (trên)
+        src_text = ctk.CTkTextbox(frame, font=self.translator.font, wrap="word", fg_color="#23272f", text_color="#f5f5f5", border_width=0)
+        src_text.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 10))
+
+        # Frame chứa combobox ngôn ngữ đích và textbox dịch
+        dest_frame = ctk.CTkFrame(frame, fg_color="#181a20")
+        dest_frame.grid(row=2, column=0, sticky="nsew", padx=0, pady=(0, 0))
+        dest_frame.grid_rowconfigure(0, weight=0)
+        dest_frame.grid_rowconfigure(1, weight=1)
+        dest_frame.grid_columnconfigure(0, weight=1)
+
+        # Combobox ngôn ngữ đích ở góc trên trái của textbox dịch
+        dest_lang_var = tk.StringVar(value=lang_display.get(self.translator.dest_lang, "🇻🇳 Tiếng Việt"))
+        dest_lang_combo = ctk.CTkComboBox(
+            dest_frame,
+            values=[lang_display[code] for code in lang_codes],
+            width=180,
+            state="readonly",
+            variable=dest_lang_var,
+            font=("JetBrains Mono", 13),
+            command=lambda _: on_text_change()  # Gọi lại dịch khi chọn ngôn ngữ đích
+        )
+        dest_lang_combo.grid(row=0, column=0, sticky="w", padx=(0, 0), pady=(0, 0))
+        dest_lang_combo.set(lang_display.get(self.translator.dest_lang, "🇻🇳 Tiếng Việt"))
+
+        # Textbox kết quả dịch (dưới)
+        dest_text = ctk.CTkTextbox(dest_frame, font=self.translator.font, wrap="word",
+                                   fg_color="#181a20", text_color="#00ff99", border_width=0, state="disabled")
+        dest_text.grid(row=1, column=0, sticky="nsew", padx=0, pady=(5, 0))
+
+        # --- Logic dịch tự động khi thay đổi nội dung hoặc ngôn ngữ ---
         def on_text_change(event=None):
+            print("Text changed, updating translation...")
             text = src_text.get("1.0", "end").strip()
+            # Lấy mã ngôn ngữ nguồn
+            src_lang_display = src_lang_var.get()
+            if src_lang_display == "Tự động phát hiện":
+                src_lang = "auto"
+            else:
+                src_lang = next((k for k, v in lang_display.items() if v == src_lang_display), "auto")
+            # Lấy mã ngôn ngữ đích
+            dest_lang_display = dest_lang_var.get()
+            dest_lang = next((k for k, v in lang_display.items() if v == dest_lang_display), self.translator.dest_lang)
             if text:
                 try:
-                    result = self.translator.translator.translate(text, dest=dest_lang)
+                    if src_lang == "auto":
+                        result = self.translator.translator.translate(text, dest=dest_lang)
+                    else:
+                        result = self.translator.translator.translate(text, src=src_lang, dest=dest_lang)
                     translated = result.text
                     src = result.src
-                    src_label.configure(text=lang_display.get(src, src))
+                    # Nếu phát hiện ngôn ngữ khác với chọn, cập nhật lại combobox nguồn
+                    if src_lang == "auto":
+                        src_lang_combo.set(lang_display.get(src, src))
                 except Exception as e:
                     translated = f"Lỗi dịch: {e}"
                 dest_text.configure(state="normal")
@@ -149,16 +192,16 @@ class MainWindow(ctk.CTkToplevel):
                 dest_text.insert("1.0", translated)
                 dest_text.configure(state="disabled")
             else:
-                src_label.configure(text="Tự động phát hiện")
+                src_lang_combo.set("Tự động phát hiện")
                 dest_text.configure(state="normal")
                 dest_text.delete("1.0", "end")
                 dest_text.configure(state="disabled")
 
-        # Theo dõi thay đổi nội dung (debounce 300ms)
+        # Debounce khi nhập liệu
         def debounce_text_change(*args):
             if hasattr(debounce_text_change, "after_id") and debounce_text_change.after_id:
                 src_text.after_cancel(debounce_text_change.after_id)
-            debounce_text_change.after_id = src_text.after(300, on_text_change)
+            debounce_text_change.after_id = src_text.after(250, on_text_change)
         debounce_text_change.after_id = None
 
         src_text.bind("<<Modified>>", lambda e: (src_text.edit_modified(0), debounce_text_change()))
@@ -223,6 +266,7 @@ class MainWindow(ctk.CTkToplevel):
 
     def on_close(self):
         self.withdraw()
+    
     def show(self):
         self.deiconify()
         main_window_instance.lift()
@@ -233,16 +277,21 @@ class MainWindow(ctk.CTkToplevel):
         for widget in self.content_frame.winfo_children():
             if isinstance(widget, ctk.CTkFrame):
                 for child in widget.winfo_children():
+                    if isinstance(child, ctk.CTkTextbox):
+                        child.delete("1.0", "end")
+                        child.insert("1.0", text)
+                        return True
                     if isinstance(child, ctk.CTkFrame):
                         for subchild in child.winfo_children():
                             if isinstance(subchild, ctk.CTkTextbox):
                                 subchild.delete("1.0", "end")
                                 subchild.insert("1.0", text)
-                                return
+                                return True
+        return False
 
 class Translator:
     def __init__(self):
-        print("Vezyl Translator - Alpha 0.1")
+        print("Vezyl Translator - Alpha 0.2")
         self.config_file = "config.json"
         self.Is_icon_showing = False
         self.load_config()
@@ -467,6 +516,7 @@ class Translator:
             img = img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
             ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(icon_size - 15, icon_size - 15))
 
+            # Tạo label chứa icon
             img_label = ctk.CTkLabel(
                 icon_win,
                 text="",
@@ -543,11 +593,13 @@ def show_homepage():
                 main_window_instance.lift()
                 main_window_instance.focus_force()
                 main_window_instance.show_tab_home()
-                # Đợi 100ms cho UI dựng xong rồi mới fill text
-                def fill_text_later():
+                # Kiểm tra liên tục cho đến khi fill thành công
+                def try_fill():
                     if last_translated_text != "":
-                        main_window_instance.fill_homepage_text(last_translated_text)
-                main_window_instance.after(100, fill_text_later)
+                        filled = main_window_instance.fill_homepage_text(last_translated_text)
+                        if not filled:
+                            main_window_instance.after(100, try_fill)
+                main_window_instance.after(100, try_fill)
             root.after(0, bring_window_to_front)
         except Exception as e:
             print(f"Loi khi bat cua so chinh: {e}")
