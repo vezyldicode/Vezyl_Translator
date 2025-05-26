@@ -218,24 +218,113 @@ class MainWindow(ctk.CTkToplevel):
     def open_settings(self):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
-        # Hiển thị các trường config
-        config = {
-            "always_show_transtale": ("Hiện icon popup", bool),
-            "icon_size": ("Kích thước icon", int),
-            "hotkey": ("Hotkey", str),
-            "dest_lang": ("Ngôn ngữ đích", str),
-        }
-        entries = {}
-        row = 0
-        for key, (label_text, typ) in config.items():
-            ctk.CTkLabel(self.content_frame, text=label_text, anchor="w").grid(row=row, column=0, sticky="w", padx=10, pady=5)
-            val = getattr(self.translator, key)
-            entry = ctk.CTkEntry(self.content_frame)
-            entry.insert(0, str(val))
-            entry.grid(row=row, column=1, padx=10, pady=5)
-            entries[key] = (entry, typ)
-            row += 1
 
+        lang_display = self.translator.lang_display
+        lang_codes = list(lang_display.keys())
+
+        # --- Frame chứa phần cuộn (canvas + scrollbar) ---
+        scrollable_frame = ctk.CTkFrame(self.content_frame, fg_color="#23272f")
+        scrollable_frame.pack(side="top", fill="both", expand=True)
+
+        canvas = tk.Canvas(scrollable_frame, bg="#23272f", highlightthickness=0, bd=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar = ctk.CTkScrollbar(scrollable_frame, orientation="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # --- Bắt sự kiện cuộn chuột ---
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # --- Frame chứa form đặt trên canvas ---
+        form_frame = ctk.CTkFrame(canvas, fg_color="#23272f")
+        window_id = canvas.create_window((0, 0), window=form_frame, anchor="nw")
+
+        # --- Nhóm các trường cấu hình ---
+        config_groups = [
+            ("Khởi động, giao diện & phím tắt", [
+                ("start_at_startup", "Khởi động cùng hệ thống", bool),
+                ("show_homepage_at_startup", "Hiện trang chủ khi khởi động", bool),
+                ("always_show_transtale", "Luôn hiện icon popup", bool),
+                ("hotkey", "Phím tắt", str),
+            ]),
+            ("Lịch sử", [
+                ("save_translate_history", "Lưu lịch sử dịch", bool),
+                ("max_history_items", "Số bản dịch lưu lịch sử", int),
+                
+            ]),
+            ("Hiển thị popup/icon", [
+                ("icon_size", "Kích thước icon", int),
+                ("icon_dissapear_after", "Thời gian icon biến mất (giây)", int),
+                ("popup_dissapear_after", "Thời gian popup biến mất (giây)", int),
+                ("max_length_on_popup", "Số ký tự tối đa trên popup", int),
+            ]),
+            ("Ngôn ngữ & font", [
+                ("dest_lang", "Ngôn ngữ đích", "combo"),
+                ("font", "Font", str),
+            ])
+        ]
+
+        entries = {}
+        row_idx = 0
+        for group_name, fields in config_groups:
+            # Tiêu đề nhóm
+            group_label = ctk.CTkLabel(form_frame, text=group_name, font=("JetBrains Mono", 15, "bold"), text_color="#00ff99")
+            group_label.grid(row=row_idx, column=0, columnspan=2, sticky="w", padx=5, pady=(18, 6))
+            row_idx += 1
+            for key, label_text, typ in fields:
+                ctk.CTkLabel(form_frame, text=label_text, anchor="w", font=("JetBrains Mono", 13)).grid(row=row_idx, column=0, sticky="w", padx=18, pady=6)
+                val = getattr(self.translator, key)
+                if typ is bool:
+                    var = tk.BooleanVar(value=val)
+                    entry = ctk.CTkCheckBox(form_frame, variable=var, text="")
+                    entry.var = var
+                elif typ is int:
+                    entry = ctk.CTkEntry(form_frame)
+                    entry.insert(0, str(val))
+                elif typ == "combo" and key == "dest_lang":
+                    current_display = lang_display.get(val, next(iter(lang_display.values())))
+                    var = tk.StringVar(value=current_display)
+                    entry = ctk.CTkComboBox(
+                        form_frame,
+                        values=[lang_display[code] for code in lang_codes],
+                        variable=var,
+                        state="readonly",
+                        font=("JetBrains Mono", 13),
+                        width=220
+                    )
+                    entry.set(current_display)
+                    entry.var = var
+                elif key == "font":
+                    entry = ctk.CTkEntry(form_frame)
+                    entry.insert(0, ", ".join(str(x) for x in val))
+                else:
+                    entry = ctk.CTkEntry(form_frame)
+                    entry.insert(0, str(val))
+                entry.grid(row=row_idx, column=1, padx=10, pady=6, sticky="ew")
+                entries[key] = (entry, typ)
+                form_frame.grid_columnconfigure(1, weight=1)
+                row_idx += 1
+
+        # --- Footer frame (luôn ở dưới cùng, ngoài canvas) ---
+        footer = ctk.CTkFrame(self.content_frame, fg_color="#23272f")
+        footer.pack(side="bottom", fill="x", pady=(0, 0))
+        footer.grid_columnconfigure(0, weight=0)
+        footer.grid_columnconfigure(1, weight=1)
+
+        save_btn = ctk.CTkButton(footer, text="Lưu cài đặt", width=120)
+        save_btn.grid(row=0, column=0, sticky="w", padx=(20, 10), pady=10)
+
+        copyright_label = ctk.CTkLabel(
+            footer,
+            text="Vezyl translator. version alpha 0.2",
+            font=("JetBrains Mono", 12, "italic"),
+            text_color="#888"
+        )
+        copyright_label.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=10)
+
+        # --- Hàm lưu config ---
         def save_config():
             try:
                 with open(self.translator.config_file, "r", encoding="utf-8") as f:
@@ -243,18 +332,35 @@ class MainWindow(ctk.CTkToplevel):
             except Exception:
                 config_data = {}
             for key, (entry, typ) in entries.items():
-                val = entry.get()
                 if typ is bool:
-                    val = val.lower() in ("1", "true", "yes", "on")
+                    val = entry.var.get()
                 elif typ is int:
-                    val = int(val)
+                    try:
+                        val = int(entry.get())
+                    except Exception:
+                        val = 0
+                elif typ == "combo" and key == "dest_lang":
+                    display_val = entry.var.get()
+                    val = next((k for k, v in lang_display.items() if v == display_val), self.translator.dest_lang)
+                elif key == "font":
+                    val = [x.strip() if i == 0 or i == 2 else int(x.strip()) for i, x in enumerate(entry.get().split(","))]
+                else:
+                    val = entry.get()
                 config_data[key] = val
             with open(self.translator.config_file, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=2)
             self.translator.load_config()
+        save_btn.configure(command=save_config)
 
-        save_btn = ctk.CTkButton(self.content_frame, text="Lưu cài đặt", command=save_config)
-        save_btn.grid(row=row, column=0, columnspan=2, pady=20)
+        # --- Cập nhật scrollregion khi thay đổi kích thước ---
+        def on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        form_frame.bind("<Configure>", on_configure)
+
+        # --- Đảm bảo canvas luôn fill chiều ngang ---
+        def resize_canvas(event):
+            canvas.itemconfig(window_id, width=event.width)
+        canvas.bind("<Configure>", resize_canvas)
 
     def toggle_fullscreen(self, event=None):
         self.is_fullscreen = not self.is_fullscreen
@@ -306,8 +412,15 @@ class Translator:
     def load_config(self):
         """load file config"""
         # Giá trị mặc định
+        self.start_at_startup = True
+        self.show_homepage_at_startup = True
         self.always_show_transtale = True
+        self.save_translate_history = True
         self.icon_size = 60
+        self.icon_dissapear_after = 5
+        self.popup_dissapear_after = 5
+        self.max_length_on_popup = 500
+        self.max_history_items = 20
         self.hotkey = 'ctrl+shift+c'
         self.dest_lang = 'vi'
         self.font = ("JetBrains Mono", 18, "bold")
@@ -328,8 +441,15 @@ class Translator:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
+                    self.start_at_startup = config.get('start_at_startup', self.start_at_startup)
+                    self.show_homepage_at_startup = config.get('show_homepage_at_startup', self.show_homepage_at_startup)
                     self.always_show_transtale = config.get('always_show_transtale', self.always_show_transtale)
+                    self.save_translate_history = config.get('save_translate_history', self.save_translate_history)
                     self.icon_size = config.get('icon_size', self.icon_size)
+                    self.icon_dissapear_after = config.get('icon_dissapear_after', self.icon_dissapear_after)
+                    self.popup_dissapear_after = config.get('popup_dissapear_after', self.popup_dissapear_after)
+                    self.max_length_on_popup = config.get('max_length_on_popup', self.max_length_on_popup)
+                    self.max_history_items = config.get('max_history_items', self.max_history_items)
                     self.hotkey = config.get('hotkey', self.hotkey)
                     self.dest_lang = config.get('dest_lang', self.dest_lang)
                     self.font = tuple(config.get('font', list(self.font)))
@@ -572,9 +692,7 @@ class Translator:
                     recent_value = tmp_value
                     tmp_clipboard = recent_value
                     x, y = pyautogui.position()
-                    self.root.after(0, self.show_icon, tmp_value, x, y)
-                    
-                        
+                    self.root.after(0, self.show_icon, tmp_value, x, y)   
                 time.sleep(0.5)
 
 main_window_instance = None  # Biến toàn cục lưu MainWindow
