@@ -10,10 +10,15 @@
   "max_history_items": 20,
   "hotkey": "ctrl+shift+c",
   "dest_lang": "en",
-  "font": [
+  "font": "Consolas",
+  "default_fonts": [
     "JetBrains Mono",
-    18,
-    "bold"
+    "Consolas",
+    "Segoe UI",
+    "Calibri",
+    "Arial",
+    "Verdana",
+    "Tahoma"
   ],
   "lang_display": {
     "en": "🇺🇸 English",

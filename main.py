@@ -125,14 +125,14 @@ class MainWindow(ctk.CTkToplevel):
             width=180,
             state="readonly",
             variable=src_lang_var,
-            font=("JetBrains Mono", 13),
+            font=(self.translator.font, 13),
             command=lambda _: on_text_change()  # Gọi lại dịch khi chọn ngôn ngữ nguồn
         )
         src_lang_combo.grid(row=0, column=0, sticky="w", pady=(0, 5))
         src_lang_combo.set("Tự động phát hiện")
 
         # Textbox nhập nội dung (trên)
-        src_text = ctk.CTkTextbox(frame, font=self.translator.font, wrap="word", fg_color="#23272f", text_color="#f5f5f5", border_width=0)
+        src_text = ctk.CTkTextbox(frame, font=(self.translator.font, 18, "bold"), wrap="word", fg_color="#23272f", text_color="#f5f5f5", border_width=0)
         src_text.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 10))
 
         # Frame chứa combobox ngôn ngữ đích và textbox dịch
@@ -150,14 +150,14 @@ class MainWindow(ctk.CTkToplevel):
             width=180,
             state="readonly",
             variable=dest_lang_var,
-            font=("JetBrains Mono", 13),
+            font=(self.translator.font, 13),
             command=lambda _: on_text_change()  # Gọi lại dịch khi chọn ngôn ngữ đích
         )
         dest_lang_combo.grid(row=0, column=0, sticky="w", padx=(0, 0), pady=(0, 0))
         dest_lang_combo.set(lang_display.get(self.translator.dest_lang, "🇻🇳 Tiếng Việt"))
 
         # Textbox kết quả dịch (dưới)
-        dest_text = ctk.CTkTextbox(dest_frame, font=self.translator.font, wrap="word",
+        dest_text = ctk.CTkTextbox(dest_frame, font=(self.translator.font, 18, "bold"), wrap="word",
                                    fg_color="#181a20", text_color="#00ff99", border_width=0, state="disabled")
         dest_text.grid(row=1, column=0, sticky="nsew", padx=0, pady=(5, 0))
 
@@ -208,11 +208,11 @@ class MainWindow(ctk.CTkToplevel):
         src_text.bind("<KeyRelease>", lambda e: debounce_text_change())
 
     def show_tab_history(self):
-        label = ctk.CTkLabel(self.content_frame, text="Lịch sử dịch", font=("JetBrains Mono", 20, "bold"))
+        label = ctk.CTkLabel(self.content_frame, text="Lịch sử dịch", font=(self.translator.font, 20, "bold"))
         label.pack(pady=40)
 
     def show_tab_favorite(self):
-        label = ctk.CTkLabel(self.content_frame, text="Các bản dịch yêu thích", font=("JetBrains Mono", 20, "bold"))
+        label = ctk.CTkLabel(self.content_frame, text="Các bản dịch yêu thích", font=(self.translator.font, 20, "bold"))
         label.pack(pady=40)
 
     def open_settings(self):
@@ -270,11 +270,11 @@ class MainWindow(ctk.CTkToplevel):
         row_idx = 0
         for group_name, fields in config_groups:
             # Tiêu đề nhóm
-            group_label = ctk.CTkLabel(form_frame, text=group_name, font=("JetBrains Mono", 15, "bold"), text_color="#00ff99")
+            group_label = ctk.CTkLabel(form_frame, text=group_name, font=(self.translator.font, 15, "bold"), text_color="#00ff99")
             group_label.grid(row=row_idx, column=0, columnspan=2, sticky="w", padx=5, pady=(18, 6))
             row_idx += 1
             for key, label_text, typ in fields:
-                ctk.CTkLabel(form_frame, text=label_text, anchor="w", font=("JetBrains Mono", 13)).grid(row=row_idx, column=0, sticky="w", padx=18, pady=6)
+                ctk.CTkLabel(form_frame, text=label_text, anchor="w", font=(self.translator.font, 13)).grid(row=row_idx, column=0, sticky="w", padx=18, pady=6)
                 val = getattr(self.translator, key)
                 if typ is bool:
                     var = tk.BooleanVar(value=val)
@@ -291,14 +291,24 @@ class MainWindow(ctk.CTkToplevel):
                         values=[lang_display[code] for code in lang_codes],
                         variable=var,
                         state="readonly",
-                        font=("JetBrains Mono", 13),
+                        font=(self.translator.font, 13),
                         width=220
                     )
                     entry.set(current_display)
                     entry.var = var
                 elif key == "font":
-                    entry = ctk.CTkEntry(form_frame)
-                    entry.insert(0, ", ".join(str(x) for x in val))
+                    fonts = self.translator.default_fonts if hasattr(self.translator, "default_fonts") else ["JetBrains Mono"]
+                    var = tk.StringVar(value=val)
+                    entry = ctk.CTkComboBox(
+                        form_frame,
+                        values=fonts,
+                        variable=var,
+                        state="readonly",
+                        font=(self.translator.font, 13),
+                        width=220
+                    )
+                    entry.set(val)
+                    entry.var = var
                 else:
                     entry = ctk.CTkEntry(form_frame)
                     entry.insert(0, str(val))
@@ -319,7 +329,7 @@ class MainWindow(ctk.CTkToplevel):
         copyright_label = ctk.CTkLabel(
             footer,
             text="Vezyl translator. version alpha 0.2",
-            font=("JetBrains Mono", 12, "italic"),
+            font=(self.translator.font, 12, "italic"),
             text_color="#888"
         )
         copyright_label.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=10)
@@ -343,7 +353,7 @@ class MainWindow(ctk.CTkToplevel):
                     display_val = entry.var.get()
                     val = next((k for k, v in lang_display.items() if v == display_val), self.translator.dest_lang)
                 elif key == "font":
-                    val = [x.strip() if i == 0 or i == 2 else int(x.strip()) for i, x in enumerate(entry.get().split(","))]
+                    val = entry.var.get()
                 else:
                     val = entry.get()
                 config_data[key] = val
@@ -423,7 +433,10 @@ class Translator:
         self.max_history_items = 20
         self.hotkey = 'ctrl+shift+c'
         self.dest_lang = 'vi'
-        self.font = ("JetBrains Mono", 18, "bold")
+        self.font = "JetBrains Mono"
+        self.default_fonts = [
+            "JetBrains Mono", "Consolas", "Segoe UI", "Calibri", "Arial", "Verdana"
+        ]
         self.lang_display = {
             "en": "🇺🇸 English",
             "vi": "🇻🇳 Tiếng Việt",
@@ -452,7 +465,8 @@ class Translator:
                     self.max_history_items = config.get('max_history_items', self.max_history_items)
                     self.hotkey = config.get('hotkey', self.hotkey)
                     self.dest_lang = config.get('dest_lang', self.dest_lang)
-                    self.font = tuple(config.get('font', list(self.font)))
+                    self.font = config.get('font', self.font)
+                    self.default_fonts = config.get('default_fonts', self.default_fonts)
                     self.lang_display = config.get('lang_display', self.lang_display)
         except Exception as e:
             print(f"Lỗi khi tải cấu hình: {e}")
@@ -508,7 +522,7 @@ class Translator:
             frame,
             text=f"{src_lang_display}",
             text_color="#aaaaaa",
-            font=("JetBrains Mono", 14, "italic"),
+            font=(self.font, 14, "italic"),
             anchor="w"
         )
         label_src_lang.pack(anchor="w", padx=10, pady=(0, 0))
@@ -521,7 +535,7 @@ class Translator:
             padx=10, pady=5,
             wraplength=400,
             justify="left",
-            font=self.font
+            font=(self.font, 18, "bold")
         )
         label_src.pack(anchor="w", padx=10, pady=(0, 10))
 
@@ -529,7 +543,7 @@ class Translator:
             frame,
             text=f"{dest_lang_display}",
             text_color="#aaaaaa",
-            font=("JetBrains Mono", 14, "italic"),
+            font=(self.font, 14, "italic"),
             anchor="w"
         )
         label_dest_lang.pack(anchor="w", padx=10, pady=(0, 0))
@@ -542,7 +556,7 @@ class Translator:
             padx=10, pady=5,
             wraplength=400,
             justify="left",
-            font=self.font
+            font=(self.font, 18, "bold")
         )
         label_trans.pack(anchor="w", padx=10, pady=(0, 10))
 
