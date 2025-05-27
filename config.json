@@ -1,10 +1,10 @@
 {
   "start_at_startup": true,
-  "show_homepage_at_startup": false,
+  "show_homepage_at_startup": true,
   "always_show_transtale": false,
   "save_translate_history": true,
   "icon_size": 60,
-  "icon_dissapear_after": 5,
+  "icon_dissapear_after": 2,
   "popup_dissapear_after": 5,
   "max_length_on_popup": 500,
   "max_history_items": 20,

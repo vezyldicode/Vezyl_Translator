@@ -245,13 +245,13 @@ class MainWindow(ctk.CTkToplevel):
         config_groups = [
             ("Khởi động, giao diện & phím tắt", [
                 ("start_at_startup", "Khởi động cùng hệ thống", bool),
-                ("show_homepage_at_startup", "Hiện trang chủ khi khởi động", bool),
-                ("always_show_transtale", "Luôn hiện icon popup", bool),
+                ("show_homepage_at_startup", "Bật cửa sổ khi khởi động", bool),
+                ("always_show_transtale", "Luôn hiện popup", bool),
                 ("hotkey", "Phím tắt", str),
             ]),
             ("Lịch sử", [
                 ("save_translate_history", "Lưu lịch sử dịch", bool),
-                ("max_history_items", "Số bản dịch lưu lịch sử", int),
+                ("max_history_items", "Số bản lưu tối đa", int),
                 
             ]),
             ("Hiển thị popup/icon", [
@@ -469,7 +469,7 @@ class Translator:
                     self.default_fonts = config.get('default_fonts', self.default_fonts)
                     self.lang_display = config.get('lang_display', self.lang_display)
         except Exception as e:
-            print(f"Lỗi khi tải cấu hình: {e}")
+            print(f"Loi khi tai cau hinh: {e}")
 
     def translate_text(self, text):
         try:
@@ -481,6 +481,7 @@ class Translator:
     def show_popup(self, text, x, y):
         global last_translated_text
         last_translated_text = text
+        popup_dissapear_after = self.popup_dissapear_after * 1000
         lang_display = self.lang_display
         lang_codes = list(lang_display.keys())
         display_to_code = {v: k for k, v in lang_display.items()}
@@ -589,7 +590,7 @@ class Translator:
         def schedule_close():
             if close_job[0]:
                 popup.after_cancel(close_job[0])
-            close_job[0] = popup.after(2000, popup.destroy)
+            close_job[0] = popup.after(popup_dissapear_after, popup.destroy)
 
         def on_enter(event):
             popup.wm_attributes('-alpha', 1.0)
@@ -617,7 +618,11 @@ class Translator:
             screen_width = self.root.winfo_screenwidth()
             screen_height = self.root.winfo_screenheight()
             icon_size = self.icon_size
-
+            icon_dissapear_after = self.icon_dissapear_after *1000 # chuyển sang mili giây
+            max_length_on_popup = self.max_length_on_popup
+            """
+            --- Định vị vị trí icon 
+            """
             # Xác định vị trí icon đối xứng quanh chuột
             # Nếu chuột ở nửa trái -> icon bên phải chuột, ngược lại bên trái
             # Nếu chuột ở nửa trên -> icon dưới chuột, ngược lại trên chuột
@@ -670,7 +675,7 @@ class Translator:
                 # Popup cũng đối xứng quanh chuột như icon
                 popup_x = icon_x
                 popup_y = icon_y + icon_size + 10 if y < screen_height // 2 else icon_y - icon_size - 10
-                if len(text) > 500:
+                if len(text) > max_length_on_popup:
                         last_translated_text = text
                         def open_homepage():
                             show_homepage()
@@ -685,7 +690,7 @@ class Translator:
                 self.Is_icon_showing = False
                 icon_win.destroy()
 
-            icon_win.after(5000, destroy_icon)
+            icon_win.after(icon_dissapear_after, destroy_icon)
             icon_win.lift()
             icon_win.after(100, lambda: icon_win.attributes('-alpha', 0.9))
 
@@ -697,6 +702,7 @@ class Translator:
         global tmp_clipboard, last_translated_text, main_window_instance
         recent_value = pyperclip.paste()
         while True:
+            always_show_transtale = self.always_show_transtale
             if self.Is_icon_showing:
                 time.sleep(0.3)
                 continue
@@ -706,7 +712,12 @@ class Translator:
                     recent_value = tmp_value
                     tmp_clipboard = recent_value
                     x, y = pyautogui.position()
-                    self.root.after(0, self.show_icon, tmp_value, x, y)   
+                    if always_show_transtale:
+                        print("popup")
+                        self.root.after(0, self.show_popup, tmp_value, x, y)
+                    else:
+                        print("icon")
+                        self.root.after(0, self.show_icon, tmp_value, x, y)   
                 time.sleep(0.5)
 
 main_window_instance = None  # Biến toàn cục lưu MainWindow
@@ -741,15 +752,6 @@ def show_homepage():
 def main():
     global translator_instance, main_window_instance
 
-    app = ctk.CTk()
-
-    # Đặt icon cho cửa sổ (taskbar)
-    icon_path = os.path.join('assets', 'logo.ico')
-    if getattr(sys, 'frozen', False):  # Khi chạy .exe
-        icon_path = os.path.join(sys._MEIPASS, 'assets', 'logo.ico')
-    else:  # Khi chạy .py
-        icon_path = os.path.join('assets', 'logo.ico')
-
     # Khởi tạo Translator trước, nhưng chưa chạy clipboard watcher
     translator_instance = Translator()
 
@@ -758,6 +760,9 @@ def main():
 
     # Gán main_window_instance cho translator để dùng after
     translator_instance.main_window = main_window_instance
+    
+    if not translator_instance.show_homepage_at_startup:
+        main_window_instance.withdraw()
 
     # Chạy clipboard watcher ở thread phụ
     # threading.Thread(target=translator_instance.clipboard_watcher, daemon=True).start()
