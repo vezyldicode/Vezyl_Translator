@@ -103,7 +103,7 @@ class MainWindow(ctk.CTkToplevel):
             self.show_tab_home()
 
     def show_tab_home(self):
-        global tmp_clipboard
+        global tmp_clipboard, last_translated_text
         # Xóa nội dung cũ
         for widget in self.content_frame.winfo_children():
             widget.destroy()
@@ -136,6 +136,11 @@ class MainWindow(ctk.CTkToplevel):
         # Textbox nhập nội dung (trên)
         src_text = ctk.CTkTextbox(frame, font=(self.translator.font, 18, "bold"), wrap="word", fg_color="#23272f", text_color="#f5f5f5", border_width=0)
         src_text.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 10))
+
+        # --- TỰ ĐỘNG FILL last_translated_text khi mở homepage ---
+        if last_translated_text:
+            src_text.delete("1.0", "end")
+            src_text.insert("1.0", last_translated_text)
 
         # Frame chứa combobox ngôn ngữ đích và textbox dịch
         dest_frame = ctk.CTkFrame(frame, fg_color="#181a20")
@@ -198,6 +203,8 @@ class MainWindow(ctk.CTkToplevel):
                 dest_text.configure(state="normal")
                 dest_text.delete("1.0", "end")
                 dest_text.configure(state="disabled")
+            # --- Reset auto-save state khi nội dung thay đổi ---
+            reset_auto_save()
 
         # Debounce khi nhập liệu
         def debounce_text_change(*args):
@@ -208,6 +215,43 @@ class MainWindow(ctk.CTkToplevel):
 
         src_text.bind("<<Modified>>", lambda e: (src_text.edit_modified(0), debounce_text_change()))
         src_text.bind("<KeyRelease>", lambda e: debounce_text_change())
+
+        # --- TỰ ĐỘNG LƯU last_translated_text ---
+        auto_save_state = {"saved": False, "timer_id": None, "last_content": ""}
+
+        def save_last_translated_text():
+            global last_translated_text
+            text = src_text.get("1.0", "end").strip()
+            if text:
+                last_translated_text = text
+                auto_save_state["saved"] = True
+                print("Auto-saved last_translated_text:", last_translated_text)
+
+        def start_auto_save_timer():
+            if auto_save_state["timer_id"]:
+                src_text.after_cancel(auto_save_state["timer_id"])
+            auto_save_state["timer_id"] = src_text.after(3000, save_last_translated_text)
+
+        def reset_auto_save():
+            auto_save_state["saved"] = False
+            auto_save_state["last_content"] = src_text.get("1.0", "end").strip()
+            start_auto_save_timer()
+
+        def on_src_text_key(event):
+            # Nếu đã auto-save rồi, chỉ reset khi nội dung thay đổi
+            current = src_text.get("1.0", "end").strip()
+            if not auto_save_state["saved"]:
+                start_auto_save_timer()
+            elif current != auto_save_state["last_content"]:
+                reset_auto_save()
+            # Nếu bấm Enter thì lưu luôn
+            if event.keysym == "Return" and not auto_save_state["saved"]:
+                save_last_translated_text()
+
+        src_text.bind("<KeyRelease>", on_src_text_key)
+
+        # Khi mở homepage, reset auto-save state
+        reset_auto_save()
 
     def show_tab_history(self):
         label = ctk.CTkLabel(self.content_frame, text="Comming on version beta 0.1", font=(self.translator.font, 20, "bold"))
