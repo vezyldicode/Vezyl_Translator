@@ -1,3 +1,3 @@
 @echo off
-pyinstaller --noconsole --onedir --icon=assets/logo.ico main.py
+pyinstaller --noconsole --onefile --icon=assets/logo.ico main.py
 pause
