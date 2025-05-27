@@ -24,6 +24,10 @@ from googletrans import Translator as GoogleTranslator  # pip install googletran
 from PIL import Image  # pip install pillow
 import sys
 from pystray import Icon, MenuItem, Menu
+import base64
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from datetime import datetime
 
 
 class MainWindow(ctk.CTkToplevel):
@@ -225,8 +229,21 @@ class MainWindow(ctk.CTkToplevel):
             if text:
                 last_translated_text = text
                 auto_save_state["saved"] = True
-                print("Auto-saved last_translated_text:", last_translated_text)
-
+                print("Auto-saved last_translated_text:")
+                # Ghi log khi lưu trên homepage
+                src_lang_display = src_lang_var.get()
+                if src_lang_display == "Tự động phát hiện":
+                    src_lang = "auto"
+                else:
+                    src_lang = next((k for k, v in lang_display.items() if v == src_lang_display), "auto")
+                dest_lang_display = dest_lang_var.get()
+                dest_lang = next((k for k, v in lang_display.items() if v == dest_lang_display), self.translator.dest_lang)
+                write_log_entry(
+                    last_translated_text,
+                    src_lang,
+                    dest_lang,
+                    "homepage"
+                )
         def start_auto_save_timer():
             if auto_save_state["timer_id"]:
                 src_text.after_cancel(auto_save_state["timer_id"])
@@ -254,8 +271,128 @@ class MainWindow(ctk.CTkToplevel):
         reset_auto_save()
 
     def show_tab_history(self):
-        label = ctk.CTkLabel(self.content_frame, text="Comming on version beta 0.1", font=(self.translator.font, 20, "bold"))
-        label.pack(pady=40)
+        # Xóa nội dung cũ
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+
+        # --- Frame chứa phần cuộn (canvas + scrollbar) ---
+        scrollable_frame = ctk.CTkFrame(self.content_frame, fg_color="#23272f")
+        scrollable_frame.pack(fill="both", expand=True, padx=60, pady=60)
+
+        canvas = tk.Canvas(scrollable_frame, bg="#23272f", highlightthickness=0, bd=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar = ctk.CTkScrollbar(scrollable_frame, orientation="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # --- Frame chứa các bản ghi lịch sử ---
+        history_frame = ctk.CTkFrame(canvas, fg_color="#23272f")
+        window_id = canvas.create_window((0, 0), window=history_frame, anchor="nw")
+
+        # Tiêu đề
+        title = ctk.CTkLabel(history_frame, text="Lịch sử dịch", font=(self.translator.font, 20, "bold"), text_color="#00ff99")
+        title.grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 20))
+
+        # Đọc và giải mã log
+        log_file = "translate_log.enc"
+        history = []
+        key = get_aes_key()
+        if os.path.exists(log_file):
+            with open(log_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        log_json = decrypt_aes(line, key)
+                        log_data = json.loads(log_json)
+                        history.append(log_data)
+                    except Exception as e:
+                        print(f"Loi giai ma log: {e}")
+
+        # Hiển thị lịch sử (mới nhất lên trên)
+        if not history:
+            ctk.CTkLabel(history_frame, text="Chưa có lịch sử dịch.", font=(self.translator.font, 15)).grid(row=1, column=0, columnspan=2, pady=20)
+        else:
+            history_frame.grid_columnconfigure(1, weight=1)  # Cho phép cột nội dung giãn
+            last_date = None
+            row_idx = 1
+            for item in reversed(history[-50:]):
+                time_str = item.get("time", "")
+                content = item.get("last_translated_text", "")
+                src_lang = item.get("src_lang", "")
+                dest_lang = item.get("dest_lang", "")
+                date_str = time_str.split(" ")[0] if time_str else ""
+                show_date = False
+                if date_str != last_date:
+                    show_date = True
+                    last_date = date_str
+
+                # Cột ngày (chỉ hiện nếu là bản ghi đầu tiên của ngày)
+                if show_date:
+                    date_label = ctk.CTkLabel(
+                        history_frame,
+                        text=date_str,
+                        font=(self.translator.font, 14, "bold"),
+                        text_color="#00ff99",
+                        width=110,
+                        anchor="w"
+                    )
+                    date_label.grid(row=row_idx, column=0, sticky="nw", padx=(0, 16), pady=(8, 0))
+                else:
+                    date_label = ctk.CTkLabel(
+                        history_frame,
+                        text="",
+                        font=(self.translator.font, 14),
+                        width=110
+                    )
+                    date_label.grid(row=row_idx, column=0, sticky="nw", padx=(0, 16))
+
+                # Cột nội dung: frame mở rộng hết chiều ngang
+                entry_frame = ctk.CTkFrame(
+                    history_frame,
+                    fg_color="#23272f",
+                    border_width=1,
+                    border_color="#444",
+                    corner_radius=8
+                )
+                entry_frame.grid(row=row_idx, column=1, sticky="ew", pady=6, padx=0)
+                entry_frame.grid_columnconfigure(0, weight=1)
+                # Thời gian và src_lang
+                ctk.CTkLabel(entry_frame, text=f"{time_str[11:]} | {src_lang}", font=(self.translator.font, 12, "italic"), text_color="#888").grid(row=0, column=0, sticky="w", padx=10, pady=(4,0))
+                # Nội dung: không wraplength, sticky "w", mở rộng hết frame
+                ctk.CTkLabel(entry_frame, text=content, font=(self.translator.font, 15), text_color="#f5f5f5", anchor="w", justify="left").grid(row=1, column=0, sticky="ew", padx=10, pady=(0,8))
+                # --- Thêm sự kiện nhấn đúp ---
+                def on_double_click(event, s=src_lang, d=dest_lang, c=content):
+                    self.open_history_record(s, d, c)
+                entry_frame.bind("<Double-Button-1>", on_double_click)
+
+                # --- Thêm hiệu ứng hover ---
+                def on_enter(event, frame=entry_frame):
+                    frame.configure(fg_color="#181a20")
+                def on_leave(event, frame=entry_frame):
+                    frame.configure(fg_color="#23272f")
+                entry_frame.bind("<Enter>", on_enter)
+                entry_frame.bind("<Leave>", on_leave)
+                row_idx += 1
+
+        # --- Cập nhật scrollregion khi thay đổi kích thước ---
+        def on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        history_frame.bind("<Configure>", on_configure)
+
+        # --- Đảm bảo canvas luôn fill chiều ngang ---
+        def resize_canvas(event):
+            canvas.itemconfig(window_id, width=event.width)
+        canvas.bind("<Configure>", resize_canvas)
+
+        # --- Bắt sự kiện cuộn chuột ---
+        def _on_mousewheel(event):
+            try:
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            except Exception:
+                pass
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
     def show_tab_favorite(self):
         label = ctk.CTkLabel(self.content_frame, text="Comming on version beta 0.2", font=(self.translator.font, 20, "bold"))
@@ -451,6 +588,34 @@ class MainWindow(ctk.CTkToplevel):
                                 return True
         return False
 
+    def open_history_record(self, src_lang, dest_lang, content):
+        # Chuyển sang tab home
+        self.show_tab_home()
+        # Tìm các widget cần thiết
+        for widget in self.content_frame.winfo_children():
+            if isinstance(widget, ctk.CTkFrame):
+                for child in widget.winfo_children():
+                    # Tìm textbox nguồn
+                    if isinstance(child, ctk.CTkTextbox):
+                        child.delete("1.0", "end")
+                        child.insert("1.0", content)
+                    # Tìm combobox nguồn và đích
+                    if isinstance(child, ctk.CTkComboBox):
+                        # src_lang_combo
+                        if hasattr(child, "set"):
+                            lang_display = self.translator.lang_display
+                            if src_lang in lang_display:
+                                child.set(lang_display[src_lang])
+                            elif dest_lang in lang_display:
+                                child.set(lang_display[dest_lang])
+                    # Tìm frame chứa combobox đích
+                    if isinstance(child, ctk.CTkFrame):
+                        for subchild in child.winfo_children():
+                            if isinstance(subchild, ctk.CTkComboBox):
+                                lang_display = self.translator.lang_display
+                                if dest_lang in lang_display:
+                                    subchild.set(lang_display[dest_lang])
+
 class Translator:
     def __init__(self):
         print("Vezyl Translator - Alpha 0.2")
@@ -527,7 +692,7 @@ class Translator:
     def show_popup(self, text, x, y):
         global last_translated_text
         last_translated_text = text
-        popup_dissapear_after = self.popup_dissapear_after * 1000
+
         lang_display = self.lang_display
         lang_codes = list(lang_display.keys())
         display_to_code = {v: k for k, v in lang_display.items()}
@@ -541,6 +706,14 @@ class Translator:
         src_lang = result.src
         src_lang_display = lang_display.get(src_lang, src_lang)
         dest_lang_display = lang_display.get(dest_lang, dest_lang)
+
+        # Ghi log sau khi đã có src_lang và dest_lang
+        write_log_entry(
+            last_translated_text,
+            src_lang,
+            dest_lang,
+            "popup"
+        )
 
         popup = ctk.CTkToplevel()
         popup.wm_overrideredirect(True)
@@ -634,6 +807,7 @@ class Translator:
 
         close_job = [None]
         def schedule_close():
+            popup_dissapear_after = self.popup_dissapear_after * 1000  # chuyển sang mili giây  
             if close_job[0]:
                 popup.after_cancel(close_job[0])
             close_job[0] = popup.after(popup_dissapear_after, popup.destroy)
@@ -699,7 +873,7 @@ class Translator:
                 top = (height - size) // 2
                 img = img.crop((left, top, left + size, top + size))
             img = img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(icon_size - 15, icon_size - 15))
+            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(icon_size - 30, icon_size - 30))
 
             # Tạo label chứa icon
             img_label = ctk.CTkLabel(
@@ -766,10 +940,75 @@ class Translator:
                         self.root.after(0, self.show_icon, tmp_value, x, y)   
                 time.sleep(0.5)
 
+
+
+def write_log_entry(last_translated_text, src_lang, dest_lang, source):
+    global translator_instance
+    save_translate_history = getattr(translator_instance, "save_translate_history", True)
+    max_items = getattr(translator_instance, "max_history_items", 20)
+    log_file = "translate_log.enc"
+    if not save_translate_history:
+        return
+    key = get_aes_key()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_data = {
+        "time": now,
+        "last_translated_text": last_translated_text,
+        "src_lang": src_lang,
+        "dest_lang": dest_lang,
+        "source": source  # "homepage" hoặc "popup"
+    }
+    # import json
+    log_line = json.dumps(log_data, ensure_ascii=False)
+    enc_line = encrypt_aes(log_line, key)
+
+    # Đọc các dòng log hiện tại
+    lines = []
+    if os.path.exists(log_file):
+        with open(log_file, "r", encoding="utf-8") as f:
+            lines = [line.rstrip("\n") for line in f if line.strip()]
+    # Nếu đã đủ max_items, xóa bản ghi cũ nhất
+    if len(lines) >= max_items:
+        lines = lines[-(max_items-1):]  # giữ lại (max_items-1) bản ghi mới nhất
+    lines.append(enc_line)
+    # Ghi lại toàn bộ log
+    with open(log_file, "w", encoding="utf-8") as f:
+        for line in lines:
+            f.write(line + "\n")
+
+def get_aes_key():
+    theme_ui = language_interface + theme_interface
+    return base64.b64decode(theme_ui)
+
+def pad(data: bytes) -> bytes:
+    pad_len = 16 - len(data) % 16
+    return data + bytes([pad_len] * pad_len)
+
+def unpad(data: bytes) -> bytes:
+    pad_len = data[-1]
+    return data[:-pad_len]
+
+def encrypt_aes(text, key):
+    iv = get_random_bytes(16)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    data = text.encode('utf-8')
+    ct_bytes = cipher.encrypt(pad(data))
+    return base64.b64encode(iv + ct_bytes).decode('utf-8')
+
+def decrypt_aes(enc_text, key):
+    raw = base64.b64decode(enc_text)
+    iv = raw[:16]
+    ct = raw[16:]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    pt = cipher.decrypt(ct)
+    return unpad(pt).decode('utf-8')
+
 main_window_instance = None  # Biến toàn cục lưu MainWindow
 translator_instance = None   # Biến toàn cục lưu Translator
 tmp_clipboard = ""
 last_translated_text = ""  # Biến toàn cục lưu bản dịch cuối
+
+
 
 def show_homepage():
     global main_window_instance, translator_instance, last_translated_text
