@@ -25,11 +25,13 @@ from PIL import Image  # pip install pillow
 import sys
 from pystray import Icon, MenuItem, Menu
 
+
 class MainWindow(ctk.CTkToplevel):
     def __init__(self, translator: 'Translator'):
         super().__init__()
         self.translator = translator
         self.title("Vezyl Translator")
+        self.wm_iconbitmap("assets/logo.ico")
         self.geometry("900x600")
         # # Gọi hàm on_close khi thu nhỏ
         # self.bind("<Unmap>", lambda event: self.on_close() if self.state() == "iconic" else None)
@@ -760,7 +762,7 @@ def main():
 
     # Gán main_window_instance cho translator để dùng after
     translator_instance.main_window = main_window_instance
-    
+
     if not translator_instance.show_homepage_at_startup:
         main_window_instance.withdraw()
 
