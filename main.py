@@ -444,7 +444,7 @@ class MainWindow(ctk.CTkToplevel):
                 ("max_length_on_popup", "Số ký tự tối đa trên popup", int),
             ]),
             ("Ngôn ngữ & font", [
-                ("dest_lang", "Ngôn ngữ đích", "combo"),
+                ("dest_lang", "Ngôn ngữ chính", "combo"),
                 ("font", "Font", str),
             ])
         ]
@@ -696,31 +696,14 @@ class Translator:
         lang_display = self.lang_display
         lang_codes = list(lang_display.keys())
         display_to_code = {v: k for k, v in lang_display.items()}
-
-        # Lấy ngôn ngữ đích từ config
         dest_lang = self.dest_lang
 
-        # Lấy ngôn ngữ gốc ban đầu
-        result = self.translator.translate(text, dest=dest_lang)
-        translated = result.text
-        src_lang = result.src
-        src_lang_display = lang_display.get(src_lang, src_lang)
-        dest_lang_display = lang_display.get(dest_lang, dest_lang)
-
-        # Ghi log sau khi đã có src_lang và dest_lang
-        write_log_entry(
-            last_translated_text,
-            src_lang,
-            dest_lang,
-            "popup"
-        )
-
+        # --- Tạo popup trước, hiển thị "Đang dịch..." ---
         popup = ctk.CTkToplevel()
         popup.wm_overrideredirect(True)
         popup.wm_attributes('-topmost', True)
         popup.wm_attributes('-alpha', 0.5)
         popup.wm_geometry(f"+{x}+{y}")
-
         frame = ctk.CTkFrame(
             popup,
             fg_color="#23272f",
@@ -740,7 +723,7 @@ class Translator:
 
         label_src_lang = ctk.CTkLabel(
             frame,
-            text=f"{src_lang_display}",
+            text="Đang phát hiện...",
             text_color="#aaaaaa",
             font=(self.font, 14, "italic"),
             anchor="w"
@@ -761,7 +744,7 @@ class Translator:
 
         label_dest_lang = ctk.CTkLabel(
             frame,
-            text=f"{dest_lang_display}",
+            text=lang_display.get(dest_lang, dest_lang),
             text_color="#aaaaaa",
             font=(self.font, 14, "italic"),
             anchor="w"
@@ -770,7 +753,7 @@ class Translator:
 
         label_trans = ctk.CTkLabel(
             frame,
-            text=translated,
+            text="Đang dịch...",
             fg_color="#23272f",
             text_color="#00ff99",
             padx=10, pady=5,
@@ -779,6 +762,32 @@ class Translator:
             font=(self.font, 18, "bold")
         )
         label_trans.pack(anchor="w", padx=10, pady=(0, 10))
+
+        # --- Hàm cập nhật kết quả dịch ---
+        def do_translate():
+            try:
+                result = self.translator.translate(text, dest=dest_lang)
+                translated = result.text
+                src_lang = result.src
+                src_lang_display = lang_display.get(src_lang, src_lang)
+                # Cập nhật giao diện trên main thread
+                popup.after(0, lambda: (
+                    label_src_lang.configure(text=src_lang_display),
+                    label_trans.configure(text=translated),
+                    combo_src_lang.set(lang_display.get(src_lang, src_lang))
+                ))
+                # Ghi log
+                write_log_entry(
+                    last_translated_text,
+                    src_lang,
+                    dest_lang,
+                    "popup"
+                )
+            except Exception as e:
+                popup.after(0, lambda: label_trans.configure(text=f"Lỗi dịch: {e}"))
+
+        # Chạy dịch ở thread phụ
+        threading.Thread(target=do_translate, daemon=True).start()
 
         def update_translation(new_src_lang):
             try:
@@ -940,7 +949,8 @@ class Translator:
                         self.root.after(0, self.show_icon, tmp_value, x, y)   
                 time.sleep(0.5)
 
-
+language_interface = "ERDI22SsV3qwvavRFkn"  # ví dụ, thay bằng key thật của bạn
+theme_interface = "Relhry3rxUf/DHh+2nlQHeeQ="
 
 def write_log_entry(last_translated_text, src_lang, dest_lang, source):
     global translator_instance
