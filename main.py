@@ -310,11 +310,37 @@ class MainWindow(ctk.CTkToplevel):
                     except Exception as e:
                         print(f"Loi giai ma log: {e}")
 
+        # Hàm xóa bản ghi khỏi log
+        def delete_history_entry(time_str, content):
+            log_file = "translate_log.enc"
+            key = get_aes_key()
+            # Đọc lại toàn bộ log
+            lines = []
+            if os.path.exists(log_file):
+                with open(log_file, "r", encoding="utf-8") as f:
+                    lines = [line.rstrip("\n") for line in f if line.strip()]
+            # Giải mã và lọc bỏ bản ghi cần xóa
+            new_lines = []
+            for line in lines:
+                try:
+                    log_json = decrypt_aes(line, key)
+                    log_data = json.loads(log_json)
+                    if not (log_data.get("time") == time_str and log_data.get("last_translated_text") == content):
+                        new_lines.append(line)
+                except Exception:
+                    new_lines.append(line)
+            # Ghi lại log đã xóa
+            with open(log_file, "w", encoding="utf-8") as f:
+                for l in new_lines:
+                    f.write(l + "\n")
+            # Refresh lại tab lịch sử
+            self.show_tab_history()
+
         # Hiển thị lịch sử (mới nhất lên trên)
         if not history:
             ctk.CTkLabel(history_frame, text="Chưa có lịch sử dịch.", font=(self.translator.font, 15)).grid(row=1, column=0, columnspan=2, pady=20)
         else:
-            history_frame.grid_columnconfigure(1, weight=1)  # Cho phép cột nội dung giãn
+            history_frame.grid_columnconfigure(1, weight=1)
             last_date = None
             row_idx = 1
             for item in reversed(history[-50:]):
@@ -359,13 +385,34 @@ class MainWindow(ctk.CTkToplevel):
                 entry_frame.grid(row=row_idx, column=1, sticky="ew", pady=6, padx=0)
                 entry_frame.grid_columnconfigure(0, weight=1)
                 # Thời gian và src_lang
-                ctk.CTkLabel(entry_frame, text=f"{time_str[11:]} | {src_lang}", font=(self.translator.font, 12, "italic"), text_color="#888").grid(row=0, column=0, sticky="w", padx=10, pady=(4,0))
+                info_label = ctk.CTkLabel(entry_frame, text=f"{time_str[11:]} | {src_lang}", font=(self.translator.font, 12, "italic"), text_color="#888")
+                info_label.grid(row=0, column=0, sticky="w", padx=10, pady=(4,0))
                 # Nội dung: không wraplength, sticky "w", mở rộng hết frame
-                ctk.CTkLabel(entry_frame, text=content, font=(self.translator.font, 15), text_color="#f5f5f5", anchor="w", justify="left").grid(row=1, column=0, sticky="ew", padx=10, pady=(0,8))
+                content_label = ctk.CTkLabel(
+                    entry_frame,
+                    text=content,
+                    font=(self.translator.font, 15),
+                    text_color="#f5f5f5",
+                    anchor="w",
+                    justify="left"
+                )
+                content_label.grid(row=1, column=0, sticky="ew", padx=10, pady=(0,8))
+
                 # --- Thêm sự kiện nhấn đúp ---
                 def on_double_click(event, s=src_lang, d=dest_lang, c=content):
                     self.open_history_record(s, d, c)
                 entry_frame.bind("<Double-Button-1>", on_double_click)
+                content_label.bind("<Double-Button-1>", on_double_click)
+                info_label.bind("<Double-Button-1>", on_double_click)
+
+                # --- Thêm menu chuột phải ---
+                def show_context_menu(event, t=time_str, c=content):
+                    menu = tk.Menu(self, tearoff=0)
+                    menu.add_command(label="Xóa bản dịch này", command=lambda: delete_history_entry(t, c))
+                    menu.tk_popup(event.x_root, event.y_root)
+                entry_frame.bind("<Button-3>", show_context_menu)
+                content_label.bind("<Button-3>", show_context_menu)
+                info_label.bind("<Button-3>", show_context_menu)
 
                 # --- Thêm hiệu ứng hover ---
                 def on_enter(event, frame=entry_frame):
@@ -374,6 +421,10 @@ class MainWindow(ctk.CTkToplevel):
                     frame.configure(fg_color="#23272f")
                 entry_frame.bind("<Enter>", on_enter)
                 entry_frame.bind("<Leave>", on_leave)
+                content_label.bind("<Enter>", on_enter)
+                content_label.bind("<Leave>", on_leave)
+                info_label.bind("<Enter>", on_enter)
+                info_label.bind("<Leave>", on_leave)
                 row_idx += 1
 
         # --- Cập nhật scrollregion khi thay đổi kích thước ---
@@ -511,7 +562,7 @@ class MainWindow(ctk.CTkToplevel):
 
         copyright_label = ctk.CTkLabel(
             footer,
-            text="Vezyl translator. version alpha 0.2",
+            text="Vezyl translator. version beta 0.1",
             font=(self.translator.font, 12, "italic"),
             text_color="#888"
         )
@@ -949,8 +1000,7 @@ class Translator:
                         self.root.after(0, self.show_icon, tmp_value, x, y)   
                 time.sleep(0.5)
 
-language_interface = "ERDI22SsV3qwvavRFkn"  # ví dụ, thay bằng key thật của bạn
-theme_interface = "Relhry3rxUf/DHh+2nlQHeeQ="
+
 
 def write_log_entry(last_translated_text, src_lang, dest_lang, source):
     global translator_instance
@@ -1066,10 +1116,18 @@ def main():
     def tray_icon_thread():
         icon_image = Image.open("assets/logo.ico")
         menu = Menu(
-            MenuItem("Homepage", on_homepage),
+            MenuItem("Trang chủ", on_homepage),
             MenuItem("Thoát", on_quit)
         )
-        icon = Icon("MyApp", icon_image, "Vezyl translator", menu)
+        def on_homepage_click(icon):  # Nhận đúng 1 tham số
+            show_homepage()
+        icon = Icon(
+            "MyApp",
+            icon_image,
+            "Vezyl translator",
+            menu,
+            on_clicked=on_homepage_click  # Sử dụng hàm mới
+        )
         icon.run()
     threading.Thread(target=tray_icon_thread, daemon=True).start()
 
@@ -1083,9 +1141,9 @@ def on_homepage(icon, item):
         try:
             main_window_instance.after(0, show_homepage)
         except Exception as e:
-            print(f"Lỗi khi hiện cửa sổ chính: {e}")
+            print(f"Loi hien thi cua so chinh: {e}")
     else:
-        print("Cửa sổ chính chưa được khởi tạo")
+        print("Cua so chinh chua duoc khoi tao")
 
 def on_quit(icon, item):
     icon.stop()
