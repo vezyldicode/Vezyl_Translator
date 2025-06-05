@@ -36,8 +36,10 @@ class MainWindow(ctk.CTkToplevel):
         self.translator = translator
         self.title("Vezyl Translator")
         self.wm_iconbitmap("assets/logo.ico")
-        self.geometry("900x600")
-        # # Gọi hàm on_close khi thu nhỏ
+        # Sửa kích thước cửa sổ theo 2 biến self.wide và self.height
+        self.width = 900
+        self.height = 600
+        self.geometry(f"{self.width}x{self.height}")
         # self.bind("<Unmap>", lambda event: self.on_close() if self.state() == "iconic" else None)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.resizable(True, True)  # Cho phép resize
@@ -406,13 +408,23 @@ class MainWindow(ctk.CTkToplevel):
                 info_label.bind("<Double-Button-1>", on_double_click)
 
                 # --- Thêm menu chuột phải ---
-                def show_context_menu(event, t=time_str, c=content):
+                def show_context_menu(event, t=time_str, c=content, s=src_lang, d=dest_lang, item=item):
                     menu = tk.Menu(self, tearoff=0)
                     menu.add_command(label="Xóa bản dịch này", command=lambda: delete_history_entry(t, c))
+                    menu.add_command(
+                        label="Lưu vào yêu thích",
+                        command=lambda: write_favorite_entry(
+                            original_text=c,
+                            translated_text=item.get("translated_text", ""),  # Nếu có trường này trong log
+                            src_lang=s,
+                            dest_lang=d,
+                            note=""
+                        )
+                    )
                     menu.tk_popup(event.x_root, event.y_root)
-                entry_frame.bind("<Button-3>", show_context_menu)
-                content_label.bind("<Button-3>", show_context_menu)
-                info_label.bind("<Button-3>", show_context_menu)
+                entry_frame.bind("<Button-3>", lambda e, t=time_str, c=content, s=src_lang, d=dest_lang, item=item: show_context_menu(e, t, c, s, d, item))
+                content_label.bind("<Button-3>", lambda e, t=time_str, c=content, s=src_lang, d=dest_lang, item=item: show_context_menu(e, t, c, s, d, item))
+                info_label.bind("<Button-3>", lambda e, t=time_str, c=content, s=src_lang, d=dest_lang, item=item: show_context_menu(e, t, c, s, d, item))
 
                 # --- Thêm hiệu ứng hover ---
                 def on_enter(event, frame=entry_frame):
@@ -446,8 +458,230 @@ class MainWindow(ctk.CTkToplevel):
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
     def show_tab_favorite(self):
-        label = ctk.CTkLabel(self.content_frame, text="Comming on version beta 0.2", font=(self.translator.font, 20, "bold"))
-        label.pack(pady=40)
+        # Xóa nội dung cũ
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+
+        # Tiêu đề (luôn cố định, không nằm trong canvas)
+        title = ctk.CTkLabel(self.content_frame, text="Yêu thích", font=(self.translator.font, 20, "bold"), text_color="#00ff99")
+        title.pack(side="top", anchor="w", padx=60, pady=(20, 0))
+
+        # --- Frame chứa phần cuộn (canvas + scrollbar) ---
+        scrollable_frame = ctk.CTkFrame(self.content_frame, fg_color="#23272f")
+        scrollable_frame.pack(fill="both", expand=True, padx=60, pady=(10, 60))
+
+        canvas = tk.Canvas(scrollable_frame, bg="#23272f", highlightthickness=0, bd=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar = ctk.CTkScrollbar(scrollable_frame, orientation="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # --- Frame chứa các bản ghi yêu thích ---
+        favorite_frame = ctk.CTkFrame(canvas, fg_color="#23272f")
+        window_id = canvas.create_window((0, 0), window=favorite_frame, anchor="nw")
+
+        # Đọc và giải mã log yêu thích
+        log_file = "favorite_log.enc"
+        favorites = []
+        key = get_aes_key()
+        if os.path.exists(log_file):
+            with open(log_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        log_json = decrypt_aes(line, key)
+                        log_data = json.loads(log_json)
+                        favorites.append(log_data)
+                    except Exception as e:
+                        print(f"Lỗi giải mã favorite: {e}")
+
+        # Hiển thị danh sách yêu thích (mới nhất lên trên)
+        if not favorites:
+            ctk.CTkLabel(favorite_frame, text="Chưa có bản dịch yêu thích.", font=(self.translator.font, 15)).grid(row=0, column=0, columnspan=2, pady=20)
+        else:
+            favorite_frame.grid_columnconfigure(1, weight=1)
+            last_date = None
+            row_idx = 0
+            def delete_favorite_entry(time_str, original_text):
+                log_file = "favorite_log.enc"
+                key = get_aes_key()
+                # Đọc lại toàn bộ log
+                lines = []
+                if os.path.exists(log_file):
+                    with open(log_file, "r", encoding="utf-8") as f:
+                        lines = [line.rstrip("\n") for line in f if line.strip()]
+                # Giải mã và lọc bỏ bản ghi cần xóa
+                new_lines = []
+                for line in lines:
+                    try:
+                        log_json = decrypt_aes(line, key)
+                        log_data = json.loads(log_json)
+                        if not (log_data.get("time") == time_str and log_data.get("original_text") == original_text):
+                            new_lines.append(line)
+                    except Exception:
+                        new_lines.append(line)
+                # Ghi lại log đã xóa
+                with open(log_file, "w", encoding="utf-8") as f:
+                    for l in new_lines:
+                        f.write(l + "\n")
+                # Refresh lại tab yêu thích
+                self.show_tab_favorite()
+            for item in reversed(favorites[-100:]):
+                time_str = item.get("time", "")
+                original_text = item.get("original_text", "")
+                translated_text = item.get("translated_text", "")
+                src_lang = item.get("src_lang", "")
+                dest_lang = item.get("dest_lang", "")
+                note = item.get("note", "")
+                date_str = time_str.split(" ")[0] if time_str else ""
+                show_date = False
+                if date_str != last_date:
+                    show_date = True
+                    last_date = date_str
+
+                # Cột ngày (chỉ hiện nếu là bản ghi đầu tiên của ngày)
+                if show_date:
+                    date_label = ctk.CTkLabel(
+                        favorite_frame,
+                        text=date_str,
+                        font=(self.translator.font, 14, "bold"),
+                        text_color="#00ff99",
+                        width=110,
+                        anchor="w"
+                    )
+                    date_label.grid(row=row_idx, column=0, sticky="nw", padx=(0, 16), pady=(8, 0))
+                    row_idx += 1
+
+                # Cột nội dung: frame mở rộng hết chiều ngang
+                entry_frame = ctk.CTkFrame(
+                    favorite_frame,
+                    fg_color="#23272f",
+                    border_width=1,
+                    border_color="#444",
+                    corner_radius=8
+                )
+                entry_frame.grid(row=row_idx, column=1, sticky="ew", pady=6, padx=0)
+                entry_frame.grid_columnconfigure(0, weight=1)
+                # Header: thời gian và (src_lang -> dest_lang)
+                lang_display = self.translator.lang_display
+                src_disp = lang_display.get(src_lang, src_lang)
+                dest_disp = lang_display.get(dest_lang, dest_lang)
+                info_label = ctk.CTkLabel(
+                    entry_frame,
+                    text=f"{time_str[11:]} | {src_disp} → {dest_disp}",
+                    font=(self.translator.font, 12, "italic"),
+                    text_color="#888"
+                )
+                info_label.grid(row=0, column=0, sticky="w", padx=10, pady=(4,0))
+                # Nội dung gốc
+                content_label = ctk.CTkLabel(
+                    entry_frame,
+                    text=original_text,
+                    font=(self.translator.font, 15),
+                    text_color="#f5f5f5",
+                    anchor="w",
+                    justify="left"
+                )
+                content_label.grid(row=1, column=0, sticky="ew", padx=10, pady=(0,4))
+                # Nội dung dịch (màu xanh lá)
+                translated_label = ctk.CTkLabel(
+                    entry_frame,
+                    text=translated_text,
+                    font=(self.translator.font, 15, "bold"),
+                    text_color="#00ff99",
+                    anchor="w",
+                    justify="left"
+                )
+                translated_label.grid(row=2, column=0, sticky="ew", padx=10, pady=(0,8))
+                # Nếu có ghi chú thì hiển thị nhỏ bên dưới
+                note_var = tk.StringVar(value=note)
+                note_entry = ctk.CTkEntry(
+                    entry_frame,
+                    textvariable=note_var,
+                    font=(self.translator.font, 12, "italic"),
+                    width=400
+                )
+                note_entry.grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 6))
+
+                def save_note(event, entry_time, note_var):
+                    new_note = note_var.get()
+                    log_file = "favorite_log.enc"
+                    key = get_aes_key()
+                    # Đọc và giải mã toàn bộ log
+                    lines = []
+                    entries = []
+                    if os.path.exists(log_file):
+                        with open(log_file, "r", encoding="utf-8") as f:
+                            for line in f:
+                                line = line.strip()
+                                if not line:
+                                    continue
+                                try:
+                                    log_json = decrypt_aes(line, key)
+                                    log_data = json.loads(log_json)
+                                    entries.append((log_data, line))
+                                except Exception:
+                                    entries.append((None, line))
+                    # Sửa note cho entry đúng time
+                    new_lines = []
+                    for log_data, old_line in entries:
+                        if log_data and log_data.get("time") == entry_time:
+                            log_data["note"] = new_note
+                            log_line = json.dumps(log_data, ensure_ascii=False)
+                            enc_line = encrypt_aes(log_line, key)
+                            new_lines.append(enc_line)
+                        else:
+                            new_lines.append(old_line)
+                    # Ghi lại file
+                    with open(log_file, "w", encoding="utf-8") as f:
+                        for l in new_lines:
+                            f.write(l + "\n")
+                    self.show_tab_favorite()
+
+                note_entry.bind("<Return>", lambda event, entry_time=time_str, note_var=note_var: save_note(event, entry_time, note_var))
+                # --- Thêm menu chuột phải ---
+                def show_context_menu(event, t=time_str, o=original_text):
+                    menu = tk.Menu(self, tearoff=0)
+                    menu.add_command(label="Xóa khỏi danh sách yêu thích", command=lambda: delete_favorite_entry(t, o))
+                    menu.tk_popup(event.x_root, event.y_root)
+                entry_frame.bind("<Button-3>", lambda e, t=time_str, o=original_text: show_context_menu(e, t, o))
+                content_label.bind("<Button-3>", lambda e, t=time_str, o=original_text: show_context_menu(e, t, o))
+                translated_label.bind("<Button-3>", lambda e, t=time_str, o=original_text: show_context_menu(e, t, o))
+                info_label.bind("<Button-3>", lambda e, t=time_str, o=original_text: show_context_menu(e, t, o))
+                # --- Thêm hiệu ứng hover ---
+                def on_enter(event, frame=entry_frame):
+                    frame.configure(fg_color="#181a20")
+                def on_leave(event, frame=entry_frame):
+                    frame.configure(fg_color="#23272f")
+                entry_frame.bind("<Enter>", on_enter)
+                entry_frame.bind("<Leave>", on_leave)
+                content_label.bind("<Enter>", on_enter)
+                content_label.bind("<Leave>", on_leave)
+                translated_label.bind("<Enter>", on_enter)
+                translated_label.bind("<Leave>", on_leave)
+                info_label.bind("<Enter>", on_enter)
+                info_label.bind("<Leave>", on_leave)
+                row_idx += 1
+
+        # --- Cập nhật scrollregion khi thay đổi kích thước ---
+        def on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        favorite_frame.bind("<Configure>", on_configure)
+
+        # --- Đảm bảo canvas luôn fill chiều ngang ---
+        def resize_canvas(event):
+            canvas.itemconfig(window_id, width=event.width)
+        canvas.bind("<Configure>", resize_canvas)
+
+        # --- Bắt sự kiện cuộn chuột ---
+        def _on_mousewheel(event):
+            try:
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            except Exception:
+                pass
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
     def open_settings(self):
         for widget in self.content_frame.winfo_children():
@@ -755,6 +989,7 @@ class Translator:
         popup.wm_attributes('-topmost', True)
         popup.wm_attributes('-alpha', 0.5)
         popup.wm_geometry(f"+{x}+{y}")
+
         frame = ctk.CTkFrame(
             popup,
             fg_color="#23272f",
@@ -763,6 +998,96 @@ class Translator:
             corner_radius=12
         )
         frame.pack(padx=8, pady=8, fill="both", expand=True)
+
+        # --- HEADER: icon yêu thích + "mở trong cửa sổ" ---
+        header_frame = ctk.CTkFrame(frame, fg_color="#23272f", height=30)  # Giảm chiều cao header
+        header_frame.pack(fill="x", padx=10, pady=(4, 0))  # Giảm padding trên
+
+        # Load icon yêu thích (favorite) với kích thước nhỏ hơn
+        try:
+            fav_img = ctk.CTkImage(light_image=Image.open("assets/fav.png"), size=(18, 18))
+        except Exception:
+            fav_img = None
+        try:
+            fav_clicked_img = ctk.CTkImage(light_image=Image.open("assets/fav_clicked.png"), size=(18, 18))
+        except Exception:
+            fav_clicked_img = None
+
+        favorite_icon_state = {"clicked": False}
+
+        favorite_btn = ctk.CTkButton(
+            header_frame,
+            image=fav_img,
+            text="",
+            width=24,
+            height=24,
+            fg_color="transparent",
+            hover_color="#444",
+            corner_radius=12  # nhỏ hơn
+        )
+        favorite_btn.pack(side="left", padx=(0, 6), pady=0)  # Giảm padding
+
+        def on_favorite_click():
+            log_file = "favorite_log.enc"
+            key = get_aes_key()
+            now_text = text
+            now_translated = label_trans.cget("text")
+            # Nếu chưa lưu thì lưu, đổi icon sang history
+            if not favorite_icon_state["clicked"]:
+                src_lang_val = getattr(self, "last_src_lang", "auto")
+                write_favorite_entry(
+                    original_text=now_text,
+                    translated_text=now_translated,
+                    src_lang=src_lang_val,
+                    dest_lang=dest_lang,
+                    note="popup"
+                )
+                favorite_icon_state["clicked"] = True
+                if fav_clicked_img:
+                    favorite_btn.configure(image=fav_clicked_img)
+            # Nếu đã lưu thì xóa, đổi icon về fav_img
+            else:
+                # Đọc lại toàn bộ log
+                lines = []
+                if os.path.exists(log_file):
+                    with open(log_file, "r", encoding="utf-8") as f:
+                        lines = [line.rstrip("\n") for line in f if line.strip()]
+                # Giải mã và lọc bỏ bản ghi cần xóa (so sánh original_text và translated_text)
+                new_lines = []
+                for line in lines:
+                    try:
+                        log_json = decrypt_aes(line, key)
+                        log_data = json.loads(log_json)
+                        if not (
+                            log_data.get("original_text") == now_text and
+                            log_data.get("translated_text") == now_translated and
+                            log_data.get("note") == "popup"
+                        ):
+                            new_lines.append(line)
+                    except Exception:
+                        new_lines.append(line)
+                # Ghi lại log đã xóa
+                with open(log_file, "w", encoding="utf-8") as f:
+                    for l in new_lines:
+                        f.write(l + "\n")
+                favorite_icon_state["clicked"] = False
+                if fav_img:
+                    favorite_btn.configure(image=fav_img)
+        favorite_btn.configure(command=on_favorite_click)
+
+        # Nút "mở trong cửa sổ"
+        open_label = ctk.CTkLabel(
+            header_frame,
+            text="mở trong cửa sổ",
+            font=(self.font, 13, "underline"),
+            text_color="#00ff99",
+            cursor="hand2"
+        )
+        open_label.pack(side="left", padx=(0, 0))
+        def on_open_click(event=None):
+            popup.destroy()
+            show_homepage()
+        open_label.bind("<Button-1>", on_open_click)
 
         combo_src_lang = ctk.CTkComboBox(
             frame,
@@ -1032,6 +1357,49 @@ def write_log_entry(last_translated_text, src_lang, dest_lang, source):
         lines = lines[-(max_items-1):]  # giữ lại (max_items-1) bản ghi mới nhất
     lines.append(enc_line)
     # Ghi lại toàn bộ log
+    with open(log_file, "w", encoding="utf-8") as f:
+        for line in lines:
+            f.write(line + "\n")
+
+def write_favorite_entry(original_text, translated_text, src_lang, dest_lang, note):
+    """
+    Lưu bản dịch yêu thích vào file favorite_log.enc (mã hóa AES).
+
+    Nếu translated_text rỗng thì sẽ tự động dịch original_text từ src_lang sang dest_lang.
+    """
+    log_file = "favorite_log.enc"
+    key = get_aes_key()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Nếu chưa có bản dịch thì tự động dịch
+    if not translated_text:
+        try:
+            translator = GoogleTranslator()
+            if src_lang == "auto":
+                result = translator.translate(original_text, dest=dest_lang)
+            else:
+                result = translator.translate(original_text, src=src_lang, dest=dest_lang)
+            translated_text = result.text
+        except Exception as e:
+            translated_text = f"Lỗi dịch: {e}"
+
+    log_data = {
+        "time": now,
+        "original_text": original_text,
+        "translated_text": translated_text,
+        "src_lang": src_lang,
+        "dest_lang": dest_lang,
+        "note": note
+    }
+    log_line = json.dumps(log_data, ensure_ascii=False)
+    enc_line = encrypt_aes(log_line, key)
+
+    # Đọc các dòng hiện tại (nếu muốn giới hạn số lượng, có thể bổ sung)
+    lines = []
+    if os.path.exists(log_file):
+        with open(log_file, "r", encoding="utf-8") as f:
+            lines = [line.rstrip("\n") for line in f if line.strip()]
+    lines.append(enc_line)
     with open(log_file, "w", encoding="utf-8") as f:
         for line in lines:
             f.write(line + "\n")
