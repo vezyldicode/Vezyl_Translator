@@ -1,0 +1,64 @@
+{
+  "home":{
+    "title": "Trang chủ",
+    "input_placeholder": "Nhập văn bản để dịch",
+    "auto_detect": "Tự động phát hiện"
+  },
+  "history":{
+    "title": "Lịch sử dịch",
+    "empty": "Chưa có lịch sử dịch",
+    "menu":{
+      "delete": "xóa bản dịch này",
+      "delete_all": "Xóa tất cả lịch sử",
+      "delete_confirm": "Bạn có chắc chắn muốn xóa tất cả lịch sử dịch không?",
+      "add_to_favorite": "Thêm vào yêu thích"
+    }
+  },
+  "favorite":{
+    "title": "Danh sách yêu thích",
+    "empty": "Chưa có mục yêu thích",
+    "menu":{
+      "delete": "Xóa khỏi danh sách yêu thích",
+      "delete_all": "Xóa tất cả yêu thích",
+      "delete_confirm": "Bạn có chắc chắn muốn xóa tất cả mục yêu thích không?"
+    }
+  },
+  "settings":{
+    "save": "Lưu cài đặt",
+    "general":{
+      "title": "Khởi động, giao diện và phím tắt",
+      "start_at_startup": "Khởi động cùng hệ thống",
+      "show_homepage_at_startup": "Hiển thị trang chủ khi khởi động",
+      "always_show_translate": "Luôn hiển thị bong bóng dịch",
+      "hotkey": "Phím tắt"
+    },
+    "history":{
+      "title": "Lịch sử",
+      "save_translate_history": "Lưu lịch sử dịch",
+      "max_history_items": "Số bản lưu tối đa"
+    },
+    "popup_and_icon":{
+      "title": "Hiển thị bong bóng/ biểu tượng",
+      "icon_size": "Kích thước biểu tượng",
+      "icon_dissapear_after": "Biểu tượng biến mất sau (giây)",
+      "popup_dissapear_after": "Bong bóng biến mất sau (giây)",
+      "max_length_on_popup": "Độ dài tối đa trên bong bóng"
+    },
+    "language":{
+      "title": "Ngôn ngữ và phông chữ",
+      "interface_language": "Ngôn ngữ giao diện",
+      "dest_lang": "Ngôn ngữ dịch",
+      "font": "Phông chữ"
+    }
+  },
+  "popup":{
+    "open_translate_page": "Mở trang dịch"
+  },
+  "menu_tray":{
+    "open_homepage": "Mở trang chủ",
+    "open_history": "Mở lịch sử dịch",
+    "open_favorite": "Mở danh sách yêu thích",
+    "open_setting": "Mở cài đặt",
+    "quit": "Đóng chương trình"
+  }
+}

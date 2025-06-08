@@ -1,0 +1,64 @@
+{
+  "home": {
+    "title": "Homepage",
+    "input_placeholder": "Enter text to translate",
+    "auto_detect": "Auto detect"
+  },
+  "history": {
+    "title": "Translation History",
+    "empty": "No translation history yet",
+    "menu": {
+      "delete": "Delete this translation",
+      "delete_all": "Delete all history",
+      "delete_confirm": "Are you sure you want to delete all translation history?",
+      "add_to_favorite": "Add to favorites"
+    }
+  },
+  "favorite": {
+    "title": "Favorites List",
+    "empty": "No favorites yet",
+    "menu": {
+      "delete": "Remove from favorites",
+      "delete_all": "Delete all favorites",
+      "delete_confirm": "Are you sure you want to delete all favorites?"
+    }
+  },
+  "settings": {
+    "save": "Save",
+    "general": {
+      "title": "Startup, Interface, and Shortcuts",
+      "start_at_startup": "Start with system",
+      "show_homepage_at_startup": "Show homepage at startup",
+      "always_show_translate": "Always show translation bubble",
+      "hotkey": "Shortcut"
+    },
+    "history": {
+      "title": "History",
+      "save_translate_history": "Save translation history",
+      "max_history_items": "Maximum saved items"
+    },
+    "popup_and_icon": {
+      "title": "Popup / Icon Display",
+      "icon_size": "Icon size",
+      "icon_dissapear_after": "Icon disappears after (seconds)",
+      "popup_dissapear_after": "Popup disappears after (seconds)",
+      "max_length_on_popup": "Max length on popup"
+    },
+    "language": {
+      "title": "Language and Font",
+      "interface_language": "Interface language",
+      "dest_lang": "Translation language",
+      "font": "Font"
+    }
+  },
+  "popup": {
+    "open_translate_page": "Open translation page"
+  },
+  "menu_tray": {
+    "open_homepage": "Open homepage",
+    "open_history": "Open translation history",
+    "open_favorite": "Open favorites list",
+    "open_setting": "Open settings",
+    "quit": "Quit application"
+  }
+}
