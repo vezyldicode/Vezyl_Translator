@@ -174,7 +174,7 @@ class MainWindow(ctk.CTkToplevel):
         ctk.set_appearance_mode("dark")
         self.translator = translator
         self.title(SOFTWARE + " " + SOFTWARE_VERSION)
-        # self.wm_iconbitmap("resources/logo.ico")
+
         # Lấy theme của máy user
         self.theme = get_windows_theme()
         # Nếu theme là "dark" thì dùng dark mode, ngược lại dùng light mode
@@ -185,7 +185,7 @@ class MainWindow(ctk.CTkToplevel):
                 print("Không thể load icon")
         else:
             try:
-                self.after(200, lambda: self.wm_iconbitmap("resources/logo_black_bg.ico"))
+                self.after(200, lambda: self.wm_iconbitmap("resources/logo_black.ico"))
             except:
                 print("Không thể load icon")
 
@@ -2048,7 +2048,7 @@ def toggle_clipboard_watcher(icon=None, item=None):
                     if get_windows_theme() == "dark":
                         new_icon = Image.open("resources/logo.ico")
                     else:
-                        new_icon = Image.open("resources/logo_black_bg.ico")
+                        new_icon = Image.open("resources/logo_black.ico")
                 update_icon.icon = new_icon
                 # Force icon to refresh
                 update_icon.visible = False
@@ -2088,8 +2088,25 @@ def main():
     translator_instance.main_window = main_window_instance
     start_hotkey_listener()
 
-    if not translator_instance.show_homepage_at_startup:
+    if translator_instance.show_homepage_at_startup:
+        # Ensure window is visible with multiple approaches
+        main_window_instance.deiconify()
+        main_window_instance.lift()
+        main_window_instance.focus_force()
+        
+        # Add a delayed show as backup to ensure window appears
+        main_window_instance.after(1000, lambda: ensure_window_visible())
+    else:
         main_window_instance.withdraw()
+
+    def ensure_window_visible():
+        if translator_instance.show_homepage_at_startup:
+            main_window_instance.deiconify()
+            main_window_instance.lift()
+            main_window_instance.focus_force()
+            main_window_instance.update()
+
+
 
     # Khởi động tray icon ở thread phụ
     def tray_icon_thread():
@@ -2098,7 +2115,7 @@ def main():
             if get_windows_theme() == "dark":
                 icon_image = Image.open("resources/logo.ico")
             else:
-                icon_image = Image.open("resources/logo_black_bg.ico")
+                icon_image = Image.open("resources/logo_black.ico")
             menu = Menu(
                 MenuItem(_._("menu_tray")["toggle_clipboard_translate"], on_tray_left_click, default=True),
                 # thêm thanh phân cách
