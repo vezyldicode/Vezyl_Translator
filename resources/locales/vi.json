@@ -2,7 +2,8 @@
   "home":{
     "title": "Trang chủ",
     "input_placeholder": "Nhập văn bản để dịch",
-    "auto_detect": "Tự động phát hiện"
+    "auto_detect": "Tự động phát hiện",
+    "reverse_translate": "Dịch ngược"
   },
   "history":{
     "title": "Lịch sử dịch",
@@ -60,5 +61,10 @@
     "open_favorite": "Mở danh sách yêu thích",
     "open_setting": "Mở cài đặt",
     "quit": "Đóng chương trình"
+  },
+  "confirm_popup": {
+    "title": "Xác nhận",
+    "confirm": "✔ Xác nhận",
+    "cancel": "✖ Hủy"
   }
 }

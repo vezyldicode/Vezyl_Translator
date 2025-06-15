@@ -1,21 +1,34 @@
-import tkinter as tk
-import webbrowser
+import os
+import requests
 
-def mo_trang_web():
-    tu = entry.get().strip()
-    if not tu:
-        return
-    url = f"https://www.verbformen.de/konjugation/?w={tu}"
-    webbrowser.open(url)
+def send_log_to_discord_webhook(log_path, webhook_url):
+    with open(log_path, "rb") as f:
+        files = {
+            "file": (os.path.basename(log_path), f, "text/plain")
+        }
+        data = {
+            "content": "Test: Crash log file attached."
+        }
+        response = requests.post(webhook_url, data=data, files=files)
+        response.raise_for_status()
+        print("Sent successfully!")
 
-# Giao diện tkinter
-root = tk.Tk()
-root.title("Tra từ tiếng Đức")
+if __name__ == "__main__":
+    log_path = "local/log/test_log.txt"
+    # Cách 1: Lấy từ biến môi trường
+    # webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+    # Cách 2: Gán trực tiếp
+    webhook_url = "https://discord.com/api/webhooks/1383762481184505856/F9v2CDRnkiMs13PzDsGEPAgV5XB-RkPwDo56FCK53qygYmrcg61zl_Fcsy2sfKODG4B7"
 
-tk.Label(root, text="Nhập từ:").pack(pady=5)
-entry = tk.Entry(root, width=30)
-entry.pack()
+    if not os.path.exists(log_path):
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("This is a test log for Discord webhook.\n")
 
-tk.Button(root, text="Mở trong trình duyệt", command=mo_trang_web).pack(pady=10)
-
-root.mainloop()
+    if not webhook_url:
+        print("Please set the DISCORD_WEBHOOK_URL environment variable or assign webhook_url directly.")
+    else:
+        try:
+            send_log_to_discord_webhook(log_path, webhook_url)
+        except Exception as e:
+            print(f"Failed to send log to Discord: {e}")

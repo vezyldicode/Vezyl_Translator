@@ -5,3 +5,6 @@ build/
 dist/
 *.spec
 local/
+*.toml
+old_version/
+test/

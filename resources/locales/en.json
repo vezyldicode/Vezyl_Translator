@@ -2,7 +2,8 @@
   "home": {
     "title": "Homepage",
     "input_placeholder": "Enter text to translate",
-    "auto_detect": "Auto detect"
+    "auto_detect": "Auto detect",
+    "reverse_translate": "reverse_translate"
   },
   "history": {
     "title": "Translation History",
@@ -30,7 +31,7 @@
       "start_at_startup": "Start with system",
       "show_homepage_at_startup": "Show homepage at startup",
       "always_show_translate": "Always show translation bubble",
-      "hotkey": "Shortcut"
+      "hotkey": "Hotkey"
     },
     "history": {
       "title": "History",
@@ -60,5 +61,10 @@
     "open_favorite": "Open favorites list",
     "open_setting": "Open settings",
     "quit": "Quit application"
+  },
+  "confirm_popup": {
+    "title": "Confirm",
+    "confirm": "✔ Confirm",
+    "cancel": "✖ Cancel"
   }
 }
