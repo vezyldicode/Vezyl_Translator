@@ -48,10 +48,10 @@ from Crypto.Random import get_random_bytes
 from pystray import Icon, MenuItem, Menu
 import keyboard
 import toml
-import importlib.util
 from VezylTranslatorProton.file_flow import *
 import VezylTranslatorProton.locale_module  as _
-
+from VezylTranslatorProton.hotkey_manager_module import register_hotkey, unregister_hotkey
+import winsound
 SOFTWARE = "Vezyl Translator"
 SOFTWARE_VERSION = "1.0.0 alpha"
 
@@ -1066,7 +1066,8 @@ class MainWindow(ctk.CTkToplevel):
                 ("start_at_startup", _._("settings")["general"]["start_at_startup"], bool),
                 ("show_homepage_at_startup", _._("settings")["general"]["show_homepage_at_startup"], bool),
                 ("always_show_transtale", _._("settings")["general"]["always_show_translate"], bool),
-                ("hotkey", _._("settings")["general"]["hotkey"], str),
+                ("hotkey", _._("settings")["general"]["hotkey"], "hotkey"),
+                ("clipboard_hotkey", _._("settings")["general"]["clipboard_hotkey"], "hotkey"),
             ]),
             (_._("settings")["history"]["title"], [
                 ("save_translate_history", _._("settings")["history"]["save_translate_history"], bool),
@@ -1128,8 +1129,7 @@ class MainWindow(ctk.CTkToplevel):
                     )
                     entry.set(val)
                     entry.var = var
-                # ... bên trong MainWindow.open_settings(), phần elif key == "hotkey": ...
-                elif key == "hotkey":
+                elif typ == "hotkey":
                     var = tk.StringVar(value=val)
                     entry = ctk.CTkEntry(form_frame, textvariable=var, state="readonly")
                     entry.var = var
@@ -1228,7 +1228,9 @@ class MainWindow(ctk.CTkToplevel):
             except Exception:
                 config_data = {}
 
-            old_hotkey = self.translator.hotkey
+            old_homepage_hotkey = self.translator.hotkey
+            old_clipboard_hotkey = self.translator.clipboard_hotkey
+
 
             for key, (entry, typ) in entries.items():
                 if typ is bool:
@@ -1252,8 +1254,31 @@ class MainWindow(ctk.CTkToplevel):
             self.translator.load_config()
             # --- Cập nhật trạng thái khởi động cùng Windows ---
             self.translator.set_startup(self.translator.start_at_startup)
-            if old_hotkey != self.translator.hotkey:
-                register_new_hotkey(self.translator.hotkey)
+            # --- Cập nhật các hotkey ---
+            if self.translator.hotkey != old_homepage_hotkey:
+                unregister_hotkey("homepage")
+                register_hotkey(
+                    "homepage",
+                    self.translator.hotkey,
+                    lambda: show_homepage()
+                )
+
+            if self.translator.clipboard_hotkey != old_clipboard_hotkey:
+                unregister_hotkey("clipboard")
+                def toggle_clipboard_watcher():
+                    self.translator.clipboard_watcher_enabled = not getattr(self.translator, "clipboard_watcher_enabled", True)
+                    state = "ON" if self.translator.clipboard_watcher_enabled else "OFF"
+                    print(f"Clipboard watcher toggled: {state}")
+                    import winsound
+                    if self.translator.clipboard_watcher_enabled:
+                        winsound.MessageBeep(winsound.MB_ICONASTERISK)
+                    else:
+                        winsound.MessageBeep(winsound.MB_ICONHAND)
+                register_hotkey(
+                    "clipboard",
+                    self.translator.clipboard_hotkey,
+                    toggle_clipboard_watcher
+                )
         save_btn.configure(command=save_config)
 
         # --- Cập nhật scrollregion khi thay đổi kích thước ---
@@ -1417,6 +1442,7 @@ class Translator:
         print(f"{SOFTWARE}. version {SOFTWARE_VERSION} - Copyright © 2025 by Vezyl")
         self.config_file = "config/general.json"
         self.Is_icon_showing = False
+        self.clipboard_watcher_enabled = True  # Thêm biến trạng thái theo dõi clipboard
         self.load_config()
         locales_dir = os.path.join("resources", "locales")
         _.load_locale(self.interface_language, locales_dir)
@@ -1425,7 +1451,8 @@ class Translator:
         self.root.withdraw()
         # --- Thêm xử lý khởi động cùng Windows ---
         self.set_startup(self.start_at_startup)
-        threading.Thread(target=self.clipboard_watcher, daemon=True).start()
+        self.clipboard_thread = threading.Thread(target=self.clipboard_watcher, daemon=True)
+        self.clipboard_thread.start()
 
     def set_startup(self, enable):
         """
@@ -1464,6 +1491,7 @@ class Translator:
         self.max_length_on_popup = 500
         self.max_history_items = 20
         self.hotkey = 'ctrl+shift+c'
+        self.clipboard_hotkey = 'ctrl+shift+v'
         self.dest_lang = 'vi'
         self.font = "JetBrains Mono"
         self.default_fonts = [
@@ -1498,6 +1526,7 @@ class Translator:
                     self.max_length_on_popup = config.get('max_length_on_popup', self.max_length_on_popup)
                     self.max_history_items = config.get('max_history_items', self.max_history_items)
                     self.hotkey = config.get('hotkey', self.hotkey)
+                    self.clipboard_hotkey = config.get('clipboard_hotkey', self.clipboard_hotkey)
                     self.dest_lang = config.get('dest_lang', self.dest_lang)
                     self.font = config.get('font', self.font)
                     self.default_fonts = config.get('default_fonts', self.default_fonts)
@@ -1846,6 +1875,10 @@ class Translator:
         recent_value = pyperclip.paste()
         while True:
             try:
+                # Kiểm tra trạng thái bật/tắt watcher
+                if not getattr(self, "clipboard_watcher_enabled", True):
+                    time.sleep(0.5)
+                    continue
                 always_show_transtale = self.always_show_transtale
                 if self.Is_icon_showing:
                     time.sleep(0.3)
@@ -1865,6 +1898,7 @@ class Translator:
                     time.sleep(0.5)
             except Exception as e:
                 sys.excepthook(*sys.exc_info())
+
 
 def get_client_preferences():
     secret_path = os.path.join("config", "client.toml")
@@ -1961,8 +1995,7 @@ main_window_instance = None  # Biến toàn cục lưu MainWindow
 translator_instance = None   # Biến toàn cục lưu Translator
 tmp_clipboard = ""
 last_translated_text = ""  # Biến toàn cục lưu bản dịch cuối
-global hotkey_id
-hotkey_id = None
+tray_icon_instance = None   # Biến toàn cục lưu instance của Translator
 
 def show_homepage():
     global main_window_instance, translator_instance, last_translated_text
@@ -1988,48 +2021,64 @@ def show_homepage():
     else:
         print("Cua so chinh chua duoc khoi tao")
 
-def unregister_current_hotkey():
-    """Unregister the current global hotkey if any."""
-    global hotkey_id
-    try:
-        if hotkey_id:
-            keyboard.remove_hotkey(hotkey_id)
-            print(f"Unregistered hotkey: {translator_instance.hotkey}")
-            hotkey_id = None
-            return True
-    except Exception as e:
-        print(f"Error unregistering hotkey: {e}")
-    return False
-
-def register_new_hotkey(hotkey_str=None):
-    """Register a new global hotkey."""
-    global hotkey_id
-    if not hotkey_str:
-        hotkey_str = translator_instance.hotkey
+def toggle_clipboard_watcher(icon=None, item=None):
+    global translator_instance, tray_icon_instance
     
-    def open_homepage_from_hotkey():
-        print(f"Opening homepage from hotkey: {hotkey_str}")
-        try:
-            translator_instance.root.after(0, show_homepage)
-        except Exception as e:
-            print(f"Error opening homepage from hotkey: {e}")
-            sys.excepthook(*sys.exc_info())
-    
-    try:
-        # Unregister any existing hotkey first
-        unregister_current_hotkey()
-        # Register new hotkey
-        hotkey_id = keyboard.add_hotkey(hotkey_str, open_homepage_from_hotkey, suppress=True)
-        print(f"Hotkey listener registered: {hotkey_str}")
-        return True
-    except Exception as e:
-        print(f"Failed to register hotkey {hotkey_str}: {e}")
-        sys.excepthook(*sys.exc_info())
-    return False
+    if translator_instance is not None:
+        translator_instance.clipboard_watcher_enabled = not getattr(translator_instance, "clipboard_watcher_enabled", True)
+        state = "ON" if translator_instance.clipboard_watcher_enabled else "OFF"
+        print(f"Clipboard watcher toggled: {state}")
+        
+        # Sử dụng icon từ tham số hoặc biến toàn cục
+        update_icon = icon if icon is not None else tray_icon_instance
+        
+        # Phát âm thanh thông báo
+        if translator_instance.clipboard_watcher_enabled:
+            winsound.MessageBeep(winsound.MB_ICONASTERISK)
+        else:
+            winsound.MessageBeep(winsound.MB_ICONHAND)
+        
+        # Đổi icon tray theo trạng thái
+        if update_icon is not None:
+            try:
+                # Tạo đối tượng Image mới cho icon
+                if not translator_instance.clipboard_watcher_enabled:
+                    new_icon = Image.open("resources/logo_red.ico")
+                else:
+                    if get_windows_theme() == "dark":
+                        new_icon = Image.open("resources/logo.ico")
+                    else:
+                        new_icon = Image.open("resources/logo_black_bg.ico")
+                update_icon.icon = new_icon
+                # Force icon to refresh
+                update_icon.visible = False
+                time.sleep(0.1)  # Đợi một chút
+                update_icon.visible = True
+                print(f"Icon updated to {'red' if not translator_instance.clipboard_watcher_enabled else 'normal'}")
+            except Exception as e:
+                print(f"Error updating icon: {e}")
 
 def start_hotkey_listener():
-    """Initialize the hotkey listener using the configured hotkey."""
-    register_new_hotkey()
+    """Initialize all hotkey listeners using the configured hotkeys."""
+    global translator_instance
+
+    # Hotkey mở homepage
+    register_hotkey(
+        "homepage",
+        translator_instance.hotkey,
+        lambda: show_homepage()
+    )
+
+    # Hotkey bật/tắt clipboard watcher
+    register_hotkey(
+        "clipboard",
+        translator_instance.clipboard_hotkey,
+        toggle_clipboard_watcher
+    )
+    
+def on_tray_left_click(icon):
+    toggle_clipboard_watcher(icon)  # Truyền icon vào đây
+
 
 def main():
     global translator_instance, main_window_instance
@@ -2044,27 +2093,30 @@ def main():
 
     # Khởi động tray icon ở thread phụ
     def tray_icon_thread():
+        global tray_icon_instance
         try:
             if get_windows_theme() == "dark":
                 icon_image = Image.open("resources/logo.ico")
             else:
                 icon_image = Image.open("resources/logo_black_bg.ico")
             menu = Menu(
+                MenuItem(_._("menu_tray")["toggle_clipboard_translate"], on_tray_left_click, default=True),
+                # thêm thanh phân cách
+                Menu.SEPARATOR,  
                 MenuItem(_._("menu_tray")["open_homepage"], on_homepage),
                 MenuItem(_._("menu_tray")["quit"], on_quit)
             )
-            def on_homepage_click(icon):
-                show_homepage()
             icon = Icon(
-                "MyApp",
+                SOFTWARE,
                 icon_image,
                 SOFTWARE,
-                menu,
-                on_clicked=on_homepage_click
+                menu=menu
             )
+            tray_icon_instance = icon
             icon.run()
         except Exception:
             sys.excepthook(*sys.exc_info())
+    
     threading.Thread(target=tray_icon_thread, daemon=True).start()
 
     # Chạy mainloop của MainWindow (main thread)

@@ -31,7 +31,8 @@
       "start_at_startup": "Khởi động cùng hệ thống",
       "show_homepage_at_startup": "Hiển thị trang chủ khi khởi động",
       "always_show_translate": "Luôn hiển thị bong bóng dịch",
-      "hotkey": "Phím tắt"
+      "hotkey": "Phím tắt mở trang chủ",
+      "clipboard_hotkey": "Phím tắt dịch từ clipboard"
     },
     "history":{
       "title": "Lịch sử",
@@ -56,6 +57,7 @@
     "open_translate_page": "Mở trang dịch"
   },
   "menu_tray":{
+    "toggle_clipboard_translate": "Bật/Tắt dịch từ clipboard",
     "open_homepage": "Mở trang chủ",
     "open_history": "Mở lịch sử dịch",
     "open_favorite": "Mở danh sách yêu thích",

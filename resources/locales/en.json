@@ -31,7 +31,8 @@
       "start_at_startup": "Start with system",
       "show_homepage_at_startup": "Show homepage at startup",
       "always_show_translate": "Always show translation bubble",
-      "hotkey": "Hotkey"
+      "hotkey": "Hotkey for open Homepage",
+      "clipboard_hotkey": "Hotkey for clipboard translation"
     },
     "history": {
       "title": "History",
@@ -56,6 +57,7 @@
     "open_translate_page": "Open translation page"
   },
   "menu_tray": {
+    "toggle_clipboard_translate": "Toggle Clipboard Translate",
     "open_homepage": "Open homepage",
     "open_history": "Open translation history",
     "open_favorite": "Open favorites list",

@@ -10,8 +10,8 @@
   "popup_dissapear_after": 2,
   "max_length_on_popup": 500,
   "max_history_items": 100,
-  "hotkey": "shift+ctrl+C",
-  "clipboard_hotkey": "",
+  "hotkey": "ctrl+F+shift",
+  "clipboard_hotkey": "shift+f2",
   "dest_lang": "vi",
   "font": "JetBrains Mono",
   "default_fonts": [
