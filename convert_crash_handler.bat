@@ -1,5 +1,5 @@
 @echo off
-set FILENAME=VezylsTranslatorCrashHandler
+set FILENAME=VezylTranslatorCrashHandler
 
 pyinstaller --noconsole --onefile "%FILENAME%.py"
 

@@ -1,11 +1,8 @@
-@echo off
-pyinstaller --noconsole --onefile --icon=resources/logo_black.png VezylTranslator.py
-pause
 
 @echo off
 set FILENAME=VezylTranslator
 
-pyinstaller --noconsole --onefile --icon=resources/logo_black.png "%FILENAME%.py"
+pyarmor gen --pack onefile "%FILENAME%.py"
 
 if exist "dist\%FILENAME%.exe" (
     move /Y "dist\%FILENAME%.exe" ".\%FILENAME%.exe"
