@@ -1,6 +1,6 @@
 """
  * Program: Vezyl Translator
- * Version: beta 0.2
+ * Version: 1.0.0 beta
  * Author: Tuan Viet Nguyen
  * Website: https://github.com/vezyldicode
  * Date:  Mai 24, 2025
@@ -48,8 +48,15 @@ from pystray import Icon, MenuItem, Menu
 import keyboard
 import toml
 import VezylTranslatorProton.locale_module  as _
-from VezylTranslatorProton.file_flow import pad, unpad, encrypt_aes, decrypt_aes, get_aes_key
-from VezylTranslatorProton.hotkey_manager_module import register_hotkey, unregister_hotkey
+from VezylTranslatorProton.file_flow import (
+    pad, 
+    unpad, 
+    encrypt_aes, 
+    decrypt_aes, 
+    get_aes_key)
+from VezylTranslatorProton.hotkey_manager_module import (
+    register_hotkey, 
+    unregister_hotkey)
 from VezylTranslatorProton.tray_module import run_tray_icon_in_thread
 from VezylTranslatorProton.clipboard_module import clipboard_watcher, get_clipboard_text, set_clipboard_text
 from VezylTranslatorProton.config_module import load_config, save_config, get_default_config
@@ -94,20 +101,6 @@ class Translator:
         self.root.withdraw()
         # --- Thêm xử lý khởi động cùng Windows ---
         self.set_startup(self.start_at_startup)
-        self.clipboard_thread = threading.Thread(
-            print("Starting clipboard watcher..."),
-            target=clipboard_watcher,
-            args=(
-                self,  # translator_instance
-                getattr(self, "main_window", None),  # main_window_instance
-                self.always_show_transtale,
-                self.show_popup,
-                self.show_icon,
-                show_homepage
-            ),
-            daemon=True
-        )
-        self.clipboard_thread.start()
 
     def set_startup(self, enable):
         """
@@ -269,7 +262,8 @@ class Translator:
         open_label.pack(side="left", padx=(0, 0))
         def on_open_click(event=None):
             popup.destroy()
-            show_homepage()
+            if main_window_instance is not None:
+                main_window_instance.show_and_fill_homepage()
         open_label.bind("<Button-1>", on_open_click)
 
         combo_src_lang = ctk.CTkComboBox(
@@ -499,7 +493,8 @@ class Translator:
                 if len(text) > max_length_on_popup:
                         constant.last_translated_text = text
                         def open_homepage():
-                            show_homepage()
+                            if main_window_instance is not None:
+                                main_window_instance.show_and_fill_homepage()
                         self.root.after(0, open_homepage)
                 else:
                     self.show_popup(text, popup_x, popup_y)
@@ -522,40 +517,11 @@ class Translator:
 
 language_interface, theme_interface = get_client_preferences()
 
-
-
-
-
-
 main_window_instance = None  # Biến toàn cục lưu MainWindow
 translator_instance = None   # Biến toàn cục lưu Translator
 tmp_clipboard = ""
 tray_icon_instance = None   # Biến toàn cục lưu instance của Translator
 
-def show_homepage():
-    global main_window_instance, translator_instance
-    if main_window_instance is not None:
-        try:
-            root = main_window_instance if hasattr(main_window_instance, 'after') else translator_instance.root
-            def bring_window_to_front():
-                main_window_instance.state('normal')
-                main_window_instance.deiconify()
-                main_window_instance.lift()
-                main_window_instance.focus_force()
-                main_window_instance.show_tab_home()
-                # Kiểm tra liên tục cho đến khi fill thành công
-                def try_fill():
-                    if constant.last_translated_text != "":
-                        print(f"Trying to fill homepage with:")
-                        filled = main_window_instance.fill_homepage_text(constant.last_translated_text)
-                        if not filled:
-                            main_window_instance.after(100, try_fill)
-                main_window_instance.after(100, try_fill)
-            root.after(0, bring_window_to_front)
-        except Exception as e:
-            sys.excepthook(*sys.exc_info())
-    else:
-        print("Cua so chinh chua duoc khoi tao")
 
 def toggle_clipboard_watcher(icon=None, item=None):
     global translator_instance, tray_icon_instance
@@ -623,6 +589,20 @@ def main():
     _
 )
     translator_instance.main_window = main_window_instance
+    translator_instance.clipboard_thread = threading.Thread(
+        target=clipboard_watcher,
+        args=(
+            translator_instance,
+            main_window_instance,
+            translator_instance.always_show_transtale,
+            translator_instance.show_popup,
+            translator_instance.show_icon,
+            main_window_instance.show_and_fill_homepage
+        ),
+        daemon=True
+    )
+    translator_instance.clipboard_thread.start()
+
     start_hotkey_listener()
 
     if translator_instance.show_homepage_at_startup:
@@ -649,7 +629,7 @@ def main():
         constant.SOFTWARE,
         get_windows_theme,
         toggle_clipboard_watcher,
-        show_homepage,
+        main_window_instance.show_and_fill_homepage,
         on_quit,
         menu_texts
     )
@@ -661,7 +641,7 @@ def on_homepage(icon, item):
     global main_window_instance
     if main_window_instance is not None:
         try:
-            main_window_instance.after(0, show_homepage)
+            main_window_instance.after(0, main_window_instance.show_and_fill_homepage)
         except Exception as e:
             print(f"Loi hien thi cua so chinh: {e}")
             sys.excepthook(*sys.exc_info())

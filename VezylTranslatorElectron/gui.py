@@ -37,7 +37,10 @@ from VezylTranslatorProton.favorite_module import (
     update_favorite_note
 )
 from VezylTranslatorNeutron import constant
-
+from VezylTranslatorProton.config_module import load_config, save_config, get_default_config
+from VezylTranslatorProton.hotkey_manager_module import (
+    register_hotkey, 
+    unregister_hotkey)
 class MainWindow(ctk.CTkToplevel):
     def __init__(
         self, translator,
@@ -1146,6 +1149,19 @@ class MainWindow(ctk.CTkToplevel):
                                 return True
         print("No CTkTextbox found to fill")
         return False
+    
+    def show_and_fill_homepage(self):
+        self.deiconify()
+        self.lift()
+        self.focus_force()
+        self.show_tab_home()
+        # Fill nếu có last_translated_text
+        def try_fill():
+            if constant.last_translated_text:
+                filled = self.fill_homepage_text(constant.last_translated_text)
+                if not filled:
+                    self.after(100, try_fill)
+        self.after(100, try_fill)
 
     def open_entry_in_homepage(self, src_lang, dest_lang, content):
         _ = self._
