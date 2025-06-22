@@ -20,21 +20,46 @@ def external_crash_handler(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
+        
     error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    # Truyền software và software_version vào crash handler
-    subprocess.Popen([
-        "VezylTranslatorCrashHandler.exe",
-        error_msg,
-        constant.SOFTWARE,
-        constant.SOFTWARE_VERSION
-    ])
+    
+    # Check if we're in startup mode by checking command line args
+    in_startup_mode = any('--startup-dir' in arg for arg in sys.argv if isinstance(arg, str))
+    
+    # Use a simpler error handling approach during startup
+    if in_startup_mode:
+        try:
+            # Try to log to user's temp directory which should always be writable
+            temp_log = os.path.join(os.environ.get('TEMP', ''), 'VezylTranslator_startup_error.log')
+            with open(temp_log, 'w', encoding='utf-8') as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(error_msg)
+                f.write("\n\nApplication will retry normal start later.\n")
+        except:
+            pass  # If even this fails, just silently exit
+        # Exit silently without showing console window
+        os._exit(1)
+    
+    # Normal crash handling for non-startup mode
+    try:
+        subprocess.Popen([
+            "VezylTranslatorCrashHandler.exe",
+            error_msg,
+            constant.SOFTWARE,
+            constant.SOFTWARE_VERSION
+        ])
+    except Exception:
+        # If crash handler fails, try to show a simple message
+        try:
+            with open("crash.log", "w", encoding="utf-8") as f:
+                f.write(error_msg)
+        except:
+            pass
     os._exit(1)
 
 sys.excepthook = external_crash_handler
 
 import winsound
-import pyautogui 
-import tkinter as tk
 import customtkinter as ctk
 import threading
 import time
@@ -42,7 +67,6 @@ import json
 import base64
 import winreg  # Thêm import này ở đầu file
 from datetime import datetime
-from googletrans import Translator as GoogleTranslator  # pip install googletrans==4.0.0-rc1
 from PIL import Image  # pip install pillow
 from pystray import Icon, MenuItem, Menu
 import keyboard
@@ -57,7 +81,7 @@ from VezylTranslatorProton.file_flow import (
 from VezylTranslatorProton.hotkey_manager_module import (
     register_hotkey, 
     unregister_hotkey)
-from VezylTranslatorProton.tray_module import run_tray_icon_in_thread
+from VezylTranslatorProton.tray_module import run_tray_icon_in_thread, get_tray_icon_instance
 from VezylTranslatorProton.clipboard_module import clipboard_watcher, get_clipboard_text, set_clipboard_text
 from VezylTranslatorProton.config_module import load_config, save_config, get_default_config
 from VezylTranslatorProton.utils import (
@@ -82,7 +106,7 @@ from VezylTranslatorProton.favorite_module import (
     update_favorite_note
 )
 from VezylTranslatorElectron.gui import MainWindow
-
+from VezylTranslatorElectron.popup_manager import show_popup_safe, show_icon_safe
 
 class Translator:
     def __init__(self):
@@ -96,7 +120,6 @@ class Translator:
         locales_dir = os.path.join("resources", "locales")
         _.load_locale(self.interface_language, locales_dir)
 
-        self.translator = GoogleTranslator()
         self.root = ctk.CTk()
         self.root.withdraw()
         # --- Thêm xử lý khởi động cùng Windows ---
@@ -107,24 +130,72 @@ class Translator:
         Bật/tắt khởi động cùng Windows cho phần mềm.
         """
         app_name = "VezylTranslator"
-        exe_path = os.path.abspath(sys.argv[0])
+        
+        # Get current application directory
+        app_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+        
+        # Get correct executable path (works with both .py and .exe)
+        if getattr(sys, 'frozen', False):
+            # Running as compiled .exe
+            exe_path = sys.executable
+        else:
+            # Running as script
+            script_path = os.path.abspath(sys.argv[0])
+            python_exe = sys.executable
+            # Try to use pythonw instead of python
+            if 'python.exe' in python_exe.lower():
+                pythonw_exe = python_exe.replace('python.exe', 'pythonw.exe')
+                if os.path.exists(pythonw_exe):
+                    exe_path = f'"{pythonw_exe}" "{script_path}"'
+                else:
+                    exe_path = f'"{python_exe}" "{script_path}"'
+            else:
+                exe_path = f'"{python_exe}" "{script_path}"'
+        
+        # For startup registry entry - always use quoted path for reliability
+        if not exe_path.startswith('"'):
+            quoted_path = f'"{exe_path}"'
+        else:
+            quoted_path = exe_path
+        
+        # Add the current directory as startup parameter
+        quoted_path = f'{quoted_path} --app-dir="{app_dir}"'
+        
+        # Try multiple startup methods in order of preference
+        success = False
+        
+        # Method 1: Windows Registry
         try:
+            reg_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
             with winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER,
-                r"Software\Microsoft\Windows\CurrentVersion\Run",
-                0, winreg.KEY_SET_VALUE
+                winreg.HKEY_CURRENT_USER, reg_path, 0, 
+                winreg.KEY_READ | winreg.KEY_SET_VALUE
             ) as key:
                 if enable:
-                    winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, exe_path)
+                    winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, quoted_path)
+                    print(f"Added {app_name} to startup with path: {quoted_path}")
+                    
+                    # Verify entry
+                    try:
+                        value, _ = winreg.QueryValueEx(key, app_name)
+                        if value == quoted_path:
+                            print(f"Successfully verified {app_name} in registry")
+                            success = True
+                    except Exception as e:
+                        print(f"Registry verification error: {e}")
                 else:
                     try:
                         winreg.DeleteValue(key, app_name)
+                        success = True
                     except FileNotFoundError:
-                        pass
+                        success = True  # Nothing to delete
         except Exception as e:
-            print(f"Cannot start with windows: {e}")
+            print(f"Registry startup method failed: {e}")
+        
+        return success
 
     def load_config(self):
+
         """load file config"""
         default_config = get_default_config()
         config = load_config(self.config_file, default_config)
@@ -147,375 +218,28 @@ class Translator:
         self.lang_display = config.get('lang_display')
         # --- Đảm bảo trạng thái khởi động cùng Windows đúng với config ---
         self.set_startup(self.start_at_startup)
-
+    
     def show_popup(self, text, x, y):
-        constant.last_translated_text = text
-
-        lang_display = self.lang_display
-        lang_codes = list(lang_display.keys())
-        display_to_code = {v: k for k, v in lang_display.items()}
-        dest_lang = self.dest_lang
-
-        # --- Tạo popup trước, hiển thị "Đang dịch..." ---
-        popup = ctk.CTkToplevel()
-        popup.wm_overrideredirect(True)
-        popup.wm_attributes('-topmost', True)
-        popup.wm_attributes('-alpha', 0.5)
-        popup.wm_geometry(f"+{x}+{y}")
-
-        frame = ctk.CTkFrame(
-            popup,
-            fg_color="#23272f",
-            border_color="#4e5057",
-            border_width=3,
-            corner_radius=12
+        show_popup_safe(
+            self, text, x, y,
+            main_window_instance,
+            language_interface,
+            theme_interface,
+            _
         )
-        frame.pack(padx=0, pady=0, fill="both", expand=True)
-
-        # --- HEADER: icon yêu thích + "mở trong cửa sổ" ---
-        header_frame = ctk.CTkFrame(frame, fg_color="#23272f", height=30)  # Giảm chiều cao header
-        header_frame.pack(fill="x", padx=10, pady=(4, 0))  # Giảm padding trên
-
-        # Load icon yêu thích (favorite) với kích thước nhỏ hơn
-        try:
-            fav_img = ctk.CTkImage(light_image=Image.open("resources/fav.png"), size=(18, 18))
-        except Exception:
-            fav_img = None
-        try:
-            fav_clicked_img = ctk.CTkImage(light_image=Image.open("resources/fav_clicked.png"), size=(18, 18))
-        except Exception:
-            fav_clicked_img = None
-
-        favorite_icon_state = {"clicked": False}
-
-        favorite_btn = ctk.CTkButton(
-            header_frame,
-            image=fav_img,
-            text="",
-            width=24,
-            height=24,
-            fg_color="transparent",
-            hover_color="#444",
-            corner_radius=12  # nhỏ hơn
-        )
-        favorite_btn.pack(side="left", padx=(0, 6), pady=0)  # Giảm padding
-
-        def on_favorite_click():
-            log_file = "favorite_log.enc"
-            key = get_aes_key(language_interface, theme_interface)
-            now_text = text
-            now_translated = label_trans.cget("text")
-            # Nếu chưa lưu thì lưu, đổi icon sang history
-            if not favorite_icon_state["clicked"]:
-                src_lang_val = getattr(self, "last_src_lang", "auto")
-                write_favorite_entry(
-                    original_text=now_text,
-                    translated_text=now_translated,
-                    src_lang=src_lang_val,
-                    dest_lang=dest_lang,
-                    note="popup",
-                    log_file=constant.FAVORITE_LOG_FILE,           # log_file
-                    language_interface=language_interface,          # language_interface
-                    theme_interface=theme_interface              # theme_interface
-                )
-                favorite_icon_state["clicked"] = True
-                if fav_clicked_img:
-                    favorite_btn.configure(image=fav_clicked_img)
-            # Nếu đã lưu thì xóa, đổi icon về fav_img
-            else:
-                # Đọc lại toàn bộ log
-                lines = []
-                if os.path.exists(log_file):
-                    with open(log_file, "r", encoding="utf-8") as f:
-                        lines = [line.rstrip("\n") for line in f if line.strip()]
-                # Giải mã và lọc bỏ bản ghi cần xóa (so sánh original_text và translated_text)
-                new_lines = []
-                for line in lines:
-                    try:
-                        log_json = decrypt_aes(line, key)
-                        log_data = json.loads(log_json)
-                        if not (
-                            log_data.get("original_text") == now_text and
-                            log_data.get("translated_text") == now_translated and
-                            log_data.get("note") == "popup"
-                        ):
-                            new_lines.append(line)
-                    except Exception:
-                        new_lines.append(line)
-                # Ghi lại log đã xóa
-                with open(log_file, "w", encoding="utf-8") as f:
-                    for l in new_lines:
-                        f.write(l + "\n")
-                favorite_icon_state["clicked"] = False
-                if fav_img:
-                    favorite_btn.configure(image=fav_img)
-        favorite_btn.configure(command=on_favorite_click)
-
-        # Nút "mở trong cửa sổ"
-        open_label = ctk.CTkLabel(
-            header_frame,
-            text=_._("popup")["open_translate_page"],
-            font=(self.font, 13, "underline"),
-            text_color="#00ff99",
-            cursor="hand2"
-        )
-        open_label.pack(side="left", padx=(0, 0))
-        def on_open_click(event=None):
-            popup.destroy()
-            if main_window_instance is not None:
-                main_window_instance.show_and_fill_homepage()
-        open_label.bind("<Button-1>", on_open_click)
-
-        combo_src_lang = ctk.CTkComboBox(
-            frame,
-            values=[lang_display[code] for code in lang_codes],
-            width=200,
-            state="readonly"
-        )
-        combo_src_lang.pack(anchor="w", padx=10, pady=(10, 0))
-
-        label_src_lang = ctk.CTkLabel(
-            frame,
-            text="Đang phát hiện...",
-            text_color="#aaaaaa",
-            font=(self.font, 14, "italic"),
-            anchor="w"
-        )
-        label_src_lang.pack(anchor="w", padx=10, pady=(0, 0))
-
-        label_src = ctk.CTkLabel(
-            frame,
-            text=text,
-            fg_color="#23272f",
-            text_color="#f5f5f5",
-            padx=10, pady=5,
-            wraplength=400,
-            justify="left",
-            font=(self.font, 18, "bold")
-        )
-        label_src.pack(anchor="w", padx=10, pady=(0, 10))
-
-        label_dest_lang = ctk.CTkLabel(
-            frame,
-            text=lang_display.get(dest_lang, dest_lang),
-            text_color="#aaaaaa",
-            font=(self.font, 14, "italic"),
-            anchor="w"
-        )
-        label_dest_lang.pack(anchor="w", padx=10, pady=(0, 0))
-
-        label_trans = ctk.CTkLabel(
-            frame,
-            text="Đang dịch...",
-            fg_color="#23272f",
-            text_color="#00ff99",
-            padx=10, pady=5,
-            wraplength=400,
-            justify="left",
-            font=(self.font, 18, "bold")
-        )
-        label_trans.pack(anchor="w", padx=10, pady=(0, 10))
-
-        try:
-            copy_img = ctk.CTkImage(light_image=Image.open("resources/save_btn.png"), size=(24, 24))
-        except Exception:
-            copy_img = None
-
-        def on_copy_click():
-            winsound.MessageBeep(winsound.MB_ICONASTERISK)
-            set_clipboard_text(label_trans.cget("text"))
-
-        copy_btn = ctk.CTkButton(
-            frame,
-            image=copy_img,
-            text="",
-            width=36,
-            height=36,
-            fg_color="transparent",
-            hover_color="#444",
-            command=on_copy_click
-        )
-        # Đặt ở góc dưới phải popup
-        copy_btn.place(relx=1.0, rely=1.0, anchor="se", x=-10, y=-10)
-
-
-        # --- Hàm cập nhật kết quả dịch ---
-        def do_translate():
-            try:
-                # Sử dụng hàm dịch với model mặc định (không truyền model từ ngoài vào)
-                result = translate_with_model(
-                    text,
-                    src_lang="auto",
-                    dest_lang=dest_lang
-                )
-                translated = result["text"]
-                src_lang = result["src"]
-                src_lang_display = lang_display.get(src_lang, src_lang)
-                # Cập nhật giao diện trên main thread
-                popup.after(0, lambda: (
-                    label_src_lang.configure(text=src_lang_display),
-                    label_trans.configure(text=translated),
-                    combo_src_lang.set(lang_display.get(src_lang, src_lang))
-                ))
-                # Ghi log
-                write_log_entry(
-                    constant.last_translated_text, 
-                    src_lang, 
-                    dest_lang, 
-                    "popup", 
-                    constant.TRANSLATE_LOG_FILE, 
-                    language_interface, 
-                    theme_interface
-                )
-            except Exception as e:
-                popup.after(0, lambda: label_trans.configure(text=f"Lỗi dịch: {e}"))
-
-        # Chạy dịch ở thread phụ
-        threading.Thread(target=do_translate, daemon=True).start()
-
-        def update_translation(new_src_lang):
-            try:
-                # Dịch lại
-                result = self.translator.translate(text, src=new_src_lang, dest=dest_lang)
-                translated = result.text
-                src_lang_display = lang_display.get(new_src_lang, new_src_lang)
-                dest_lang_display = lang_display.get(dest_lang, dest_lang)
-                # Cập nhật các label
-                label_src_lang.configure(text=f"{src_lang_display}") # ngôn ngữ gốc mới
-                label_dest_lang.configure(text=f"{dest_lang_display}") # ngôn ngữ đích mới
-                label_trans.configure(text=translated) # Hiển thị lại bản dịch
-            except Exception as e:
-                label_trans.configure(text=f"Cannot translate: {e}")
-
-        def on_combo_change(selected_value):
-            selected_lang_code = display_to_code.get(selected_value)
-            if selected_lang_code:
-                update_translation(selected_lang_code)
-
-        combo_src_lang.configure(command=on_combo_change)
-        try:
-            combo_src_lang.set(lang_display[src_lang])
-        except Exception:
-            combo_src_lang.set(lang_display.get('en', '🇺🇸 English'))
-
-        close_job = [None]
-        def schedule_close():
-            popup_dissapear_after = self.popup_dissapear_after * 1000  # chuyển sang mili giây  
-            if close_job[0]:
-                popup.after_cancel(close_job[0])
-            close_job[0] = popup.after(popup_dissapear_after, popup.destroy)
-
-        def on_enter(event):
-            popup.wm_attributes('-alpha', 1.0)
-            if close_job[0]:
-                popup.after_cancel(close_job[0])
-                close_job[0] = None
-
-        def on_leave(event):
-            popup.wm_attributes('-alpha', 0.7)
-            schedule_close()
-
-        popup.bind("<Enter>", on_enter)
-        popup.bind("<Leave>", on_leave)
-
-        schedule_close()
-        popup.mainloop()
 
     def show_icon(self, text, x, y):
-        # Hàm này phải luôn được gọi từ main thread!
-        try:
-            self.Is_icon_showing = True
-
-            # Lấy kích thước màn hình
-            screen_width = self.root.winfo_screenwidth()
-            screen_height = self.root.winfo_screenheight()
-            icon_size = self.icon_size
-            icon_dissapear_after = self.icon_dissapear_after *1000 # chuyển sang mili giây
-            max_length_on_popup = self.max_length_on_popup
-            """
-            --- Định vị vị trí icon 
-            """
-            # Xác định vị trí icon đối xứng quanh chuột
-            # Nếu chuột ở nửa trái -> icon bên phải chuột, ngược lại bên trái
-            # Nếu chuột ở nửa trên -> icon dưới chuột, ngược lại trên chuột
-            if x < screen_width // 2:
-                icon_x = x + 30
-            else:
-                icon_x = x - icon_size - 30
-            if y < screen_height // 2:
-                icon_y = y + 30
-            else:
-                icon_y = y - icon_size - 30
-
-            # Đảm bảo icon không ra ngoài màn hình
-            icon_x = max(0, min(icon_x, screen_width - icon_size))
-            icon_y = max(0, min(icon_y, screen_height - icon_size))
-
-            icon_win = ctk.CTkToplevel(self.root)
-            icon_win.wm_overrideredirect(True)
-            icon_win.wm_attributes('-topmost', True)
-            icon_win.wm_geometry(f"{icon_size}x{icon_size}+{icon_x}+{icon_y}")
-
-            # Load icon từ file và resize thành hình vuông
-            # icon dựa trên theme
-            if get_windows_theme() == "dark":
-                img = Image.open(os.path.join("resources", "logo.png"))
-            else:
-                img = Image.open(os.path.join("resources", "logo_black_bg.png"))
-            width, height = img.size
-            if width != height:
-                size = min(width, height)
-                left = (width - size) // 2
-                top = (height - size) // 2
-                img = img.crop((left, top, left + size, top + size))
-            img = img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(icon_size - 30, icon_size - 30))
-
-            # Tạo label chứa icon
-            img_label = ctk.CTkLabel(
-                icon_win,
-                text="",
-                image=ctk_img,
-                width=icon_size,
-                height=icon_size,
-                corner_radius=0,
-                fg_color="transparent"
-            )
-            img_label.pack(fill="both", expand=True, padx=0, pady=0)
-
-            def on_click(event):
-                print(f"Clicked on icon at ({icon_x}, {icon_y})")
-                self.Is_icon_showing = False
-                icon_win.withdraw()
-                # Popup cũng đối xứng quanh chuột như icon
-                popup_x = icon_x
-                popup_y = icon_y + icon_size + 10 if y < screen_height // 2 else icon_y - icon_size - 10
-                if len(text) > max_length_on_popup:
-                        constant.last_translated_text = text
-                        def open_homepage():
-                            if main_window_instance is not None:
-                                main_window_instance.show_and_fill_homepage()
-                        self.root.after(0, open_homepage)
-                else:
-                    self.show_popup(text, popup_x, popup_y)
-
-            img_label.bind("<Button-1>", on_click)
-            img_label.configure(cursor="hand2")
-
-            def destroy_icon():
-                self.Is_icon_showing = False
-                icon_win.destroy()
-
-            icon_win.after(icon_dissapear_after, destroy_icon)
-            icon_win.lift()
-            icon_win.after(100, lambda: icon_win.attributes('-alpha', 0.9))
-
-        except Exception as e:
-            self.Is_icon_showing = False
-            print(f"Lỗi show_icon: {e}", file=sys.stderr)
+        show_icon_safe(
+            self, text, x, y,
+            main_window_instance,
+            language_interface,
+            theme_interface,
+            _
+        )
 
 
-language_interface, theme_interface = get_client_preferences()
+
+language_interface, theme_interface = "", ""
 
 main_window_instance = None  # Biến toàn cục lưu MainWindow
 translator_instance = None   # Biến toàn cục lưu Translator
@@ -523,27 +247,24 @@ tmp_clipboard = ""
 tray_icon_instance = None   # Biến toàn cục lưu instance của Translator
 
 
-def toggle_clipboard_watcher(icon=None, item=None):
-    global translator_instance, tray_icon_instance
-    
+def toggle_clipboard_watcher():
+    global translator_instance
+
     if translator_instance is not None:
         translator_instance.clipboard_watcher_enabled = not getattr(translator_instance, "clipboard_watcher_enabled", True)
         state = "ON" if translator_instance.clipboard_watcher_enabled else "OFF"
         print(f"Clipboard watcher toggled: {state}")
-        
-        # Sử dụng icon từ tham số hoặc biến toàn cục
-        update_icon = icon if icon is not None else tray_icon_instance
-        
+
         # Phát âm thanh thông báo
         if translator_instance.clipboard_watcher_enabled:
             winsound.MessageBeep(winsound.MB_ICONASTERISK)
         else:
             winsound.MessageBeep(winsound.MB_ICONHAND)
-        
+
         # Đổi icon tray theo trạng thái
-        if update_icon is not None:
+        tray_icon = get_tray_icon_instance()
+        if tray_icon is not None:
             try:
-                # Tạo đối tượng Image mới cho icon
                 if not translator_instance.clipboard_watcher_enabled:
                     new_icon = Image.open("resources/logo_red.ico")
                 else:
@@ -551,14 +272,16 @@ def toggle_clipboard_watcher(icon=None, item=None):
                         new_icon = Image.open("resources/logo.ico")
                     else:
                         new_icon = Image.open("resources/logo_black.ico")
-                update_icon.icon = new_icon
-                # Force icon to refresh
-                update_icon.visible = False
-                time.sleep(0.1)  # Đợi một chút
-                update_icon.visible = True
+                tray_icon.icon = new_icon
+                # Force the icon to refresh by toggling visibility
+                tray_icon.visible = False
+                time.sleep(0.1)
+                tray_icon.visible = True
                 print(f"Icon updated to {'red' if not translator_instance.clipboard_watcher_enabled else 'normal'}")
             except Exception as e:
                 print(f"Error updating icon: {e}")
+        else:
+            print("Tray icon instance is not initialized, cannot update icon.")
 
 def start_hotkey_listener():
     """Initialize all hotkey listeners using the configured hotkeys."""
@@ -568,7 +291,7 @@ def start_hotkey_listener():
     register_hotkey(
         "homepage",
         translator_instance.hotkey,
-        lambda: show_homepage()
+        lambda: main_window_instance.show_and_fill_homepage()
     )
 
     # Hotkey bật/tắt clipboard watcher
@@ -580,6 +303,28 @@ def start_hotkey_listener():
     
 
 def main():
+    # Parse command line arguments first
+    import argparse
+    parser = argparse.ArgumentParser(description='VezylTranslator')
+    parser.add_argument('--app-dir', help='Application directory path')
+    parser.add_argument('--quiet-startup', action='store_true', help='Start silently')
+    args, unknown = parser.parse_known_args()
+    
+    # Change to the application directory if specified
+    if args.app_dir and os.path.exists(args.app_dir):
+        try:
+            os.chdir(args.app_dir)
+            print(f"Changed working directory to: {args.app_dir}")
+        except Exception as e:
+            print(f"Failed to set working directory: {e}")
+    
+    # # Create required directories FIRST
+    # ensure_required_directories()
+
+
+    global language_interface, theme_interface, translator_instance, main_window_instance
+    language_interface, theme_interface = get_client_preferences()
+    # Continue with normal startup...
     global translator_instance, main_window_instance
     translator_instance = Translator()
     main_window_instance = MainWindow(
@@ -654,3 +399,19 @@ def on_quit(icon, item):
 
 if __name__ == "__main__":
     main()
+
+# def ensure_required_directories():
+#     """Create all required directories for the application"""
+#     dirs = [
+#         "config", 
+#         "resources",
+#         "resources/locales",
+#         "logs",
+#         "temp"
+#     ]
+#     for directory in dirs:
+#         try:
+#             os.makedirs(directory, exist_ok=True)
+#         except:
+#             # For startup, we'll continue even if some directories can't be created
+#             pass

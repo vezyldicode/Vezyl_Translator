@@ -1,2 +1,9 @@
-pyperclip
+customtkinter
+Pillow
+pystray
 keyboard
+toml
+pyperclip
+pyautogui
+googletrans
+pycryptodome

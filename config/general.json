@@ -1,6 +1,6 @@
 {
   "interface_language": "en",
-  "start_at_startup": false,
+  "start_at_startup": true,
   "show_homepage_at_startup": true,
   "always_show_transtale": false,
   "save_translate_history": true,
