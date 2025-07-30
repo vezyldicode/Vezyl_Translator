@@ -1,0 +1,14 @@
+customtkinter
+Pillow
+pystray
+keyboard
+toml
+pyperclip
+pyautogui
+googletrans==4.0.0rc1
+pycryptodome
+transformers
+torch
+sentencepiece
+langdetect
+requests

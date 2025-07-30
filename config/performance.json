@@ -1,0 +1,26 @@
+{
+  "clipboard_watcher": {
+    "min_interval": 0.8,
+    "max_interval": 3.0,
+    "adaptive_timing": true
+  },
+  "ui_rendering": {
+    "max_history_items": 50,
+    "debounce_delay": 300,
+    "virtual_scrolling": true
+  },
+  "translation": {
+    "max_concurrent": 3,
+    "timeout_seconds": 30,
+    "use_thread_pool": true
+  },
+  "memory": {
+    "gc_threshold": [
+      700,
+      10,
+      10
+    ],
+    "periodic_cleanup": true,
+    "cleanup_interval": 60
+  }
+}
