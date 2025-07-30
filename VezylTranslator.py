@@ -1,6 +1,6 @@
 """
  * Program: Vezyl Translator
- * Version: 1.0.0 beta
+ * Version: 1.5.2
  * Author: Tuan Viet Nguyen
  * Website: https://github.com/vezyldicode
  * Date:  Mai 24, 2025
@@ -252,6 +252,57 @@ tmp_clipboard = ""
 tray_icon_instance = None   # Biến toàn cục lưu instance của Translator
 
 
+def update_main_window_instance(new_window):
+    """Update the global main window instance"""
+    global main_window_instance
+    main_window_instance = new_window
+    return new_window
+
+def get_or_create_main_window():
+    """Get existing main window or create new one if needed"""
+    global main_window_instance, translator_instance, language_interface, theme_interface
+    
+    # Check if current main window is usable
+    if (main_window_instance is not None and 
+        hasattr(main_window_instance, 'winfo_exists') and
+        main_window_instance.winfo_exists() and
+        not getattr(main_window_instance, '_shutting_down', False)):
+        return main_window_instance
+    
+    # If main window is not usable and we have translator, recreate it
+    if translator_instance is not None:
+        try:
+            print("Recreating main window from global context...")
+            new_window = MainWindow(translator_instance, language_interface, theme_interface, _)
+            translator_instance.main_window = new_window
+            main_window_instance = new_window
+            return new_window
+        except Exception as e:
+            print(f"Failed to recreate main window: {e}")
+    
+    return None
+
+
+def safe_show_homepage():
+    """
+    Safely show homepage with main window recreation if needed
+    """
+    global main_window_instance
+    
+    # Try to get or create main window
+    main_window = get_or_create_main_window()
+    if main_window is not None:
+        try:
+            # Reset shutdown flag if exists
+            if hasattr(main_window, '_shutting_down'):
+                main_window._shutting_down = False
+            main_window.show_and_fill_homepage()
+            return True
+        except Exception as e:
+            print(f"Error showing homepage: {e}")
+    
+    return False
+
 def toggle_clipboard_watcher():
     """
     Wrapper function để gọi unified toggle function với translator_instance
@@ -434,7 +485,7 @@ def main():
         constant.SOFTWARE,
         get_windows_theme,
         lambda: unified_toggle_clipboard_watcher(translator_instance),
-        main_window_instance.show_and_fill_homepage,
+        safe_show_homepage,  # Use safe homepage function
         on_quit,
         menu_texts
     )
@@ -474,19 +525,3 @@ def on_quit(icon, item):
 
 if __name__ == "__main__":
     main()
-
-# def ensure_required_directories():
-#     """Create all required directories for the application"""
-#     dirs = [
-#         "config", 
-#         "resources",
-#         "resources/locales",
-#         "logs",
-#         "temp"
-#     ]
-#     for directory in dirs:
-#         try:
-#             os.makedirs(directory, exist_ok=True)
-#         except:
-#             # For startup, we'll continue even if some directories can't be created
-#             pass

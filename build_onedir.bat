@@ -46,6 +46,7 @@ echo Using bootstrap file: %BOOTSTRAP_FILE%
 
 pyinstaller --onedir ^
 --noconsole ^
+--clean ^
 --icon=resources\logo_black.ico ^
 --optimize=2 ^
 --clean ^

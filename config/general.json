@@ -38,7 +38,7 @@
     "es": "🇪🇸 Español",
     "th": "🇹🇭 ไทย"
   },
-  "translation_model": "marian",
+  "translation_model": "google",
   "translation_models": {
     "google": "🌐 Google Translator",
     "bing": "🔍 Bing Translator",
