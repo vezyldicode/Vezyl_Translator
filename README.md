@@ -29,7 +29,7 @@ To quickly turn on the application window, use Ctrl+Shift+F.(You can customize t
 - OS: Windows 7/8/10/11 (64-bit)
 - CPU: Intel/AMD dual-core, 1.5 GHz or higher
 - RAM: 2GB (4GB recommended)
-- Disk Space: 200MB free
+- Disk Space: 1GB free
 - Display: 1024x600 or higher
 ## Installation
 ### Installer:
