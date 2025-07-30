@@ -11,6 +11,7 @@ README_for_dev.md
 # Local files
 *.log
 local/
+LICENSE.txt
 
 # Build files
 build/
@@ -19,6 +20,7 @@ dist/
 _internal/
 Vezyl_Translator_*/
 Vezyl_Translator_*.zip
+
 # Large model files (>100MB)
 resources/marian_models/
 *.bin

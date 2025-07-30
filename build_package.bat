@@ -16,6 +16,12 @@ copy /y "VezylTranslatorCrashHandler.exe" "%dest%\"
 
 REM 4. move thư mục _internal
 move "_internal" "%dest%\_internal"
+if exist "%dest%\_internal\resources" rmdir /s /q "%dest%\_internal\resources"
+if exist "%dest%\_internal\config" rmdir /s /q "%dest%\_internal\config"
+if exist "%dest%\_internal\VezylTranslatorElectron\local" rmdir /s /q "%dest%\_internal\VezylTranslatorElectron\local"
+if exist "%dest%\_internal\VezylTranslatorNeutron\local" rmdir /s /q "%dest%\_internal\VezylTranslatorNeutron\local"
+if exist "%dest%\_internal\VezylTranslatorProton\local" rmdir /s /q "%dest%\_internal\VezylTranslatorProton\local"
+
 
 REM 7. Copy thư mục resources, sau đó xóa thư mục con 'neveruse'
 xcopy "resources" "%dest%\resources" /E /I
