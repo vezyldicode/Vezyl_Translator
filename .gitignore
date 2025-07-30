@@ -1,43 +1,36 @@
 # Developer files and directories
 key/
 *.enc
+*.toml
+all_version/
+backup/
+README_for_dev.md
+*.exe
+!VezylTranslatorCrashHandler.exe
+
+# Local files
 *.log
+local/
+
+# Build files
 build/
 dist/
 *.spec
-local/
-*.toml
-old_version/
-test/
-backup/
-
-# Developer tools (not for public release)
-marian_model_downloader.py
-resources/marian_models/
+_internal/
+Vezyl_Translator_*/
 
 # Large model files (>100MB)
+resources/marian_models/
 *.bin
 resources/marian_models/**/*.bin
 
-# Build scripts and setup files (developer only)
-convert.bat
-convert_crash_handler.bat
-build_package.bat
-1.0.0_run_inno.iss
-bootstrap.py
-
-# Development and test files
-demo_before_after.py
+# test files
 test_*.py
 *_test.py
 test/
 __pycache__/
 *.pyc
 *.pyo
-
-# Marian development files (models are included but dev tools ignored)
-VezylTranslatorProton/marian_module.py
-VezylTranslatorElectron/marian_download_dialog.py
 
 # VS Code settings
 .vscode/
@@ -46,8 +39,3 @@ VezylTranslatorElectron/marian_download_dialog.py
 *.idea/
 *.swp
 *.swo
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini

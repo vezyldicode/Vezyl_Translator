@@ -4,7 +4,7 @@
   "show_homepage_at_startup": true,
   "always_show_transtale": false,
   "enable_ctrl_tracking": false,
-  "enable_hotkeys": true,
+  "enable_hotkeys": false,
   "save_translate_history": true,
   "auto_save_after": 3000,
   "icon_size": 60,
