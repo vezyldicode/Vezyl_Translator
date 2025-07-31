@@ -2,7 +2,7 @@
 setlocal
 
 REM 1. Đặt biến version
-set "version=1.5.1"
+set "version=1.5.3_beta"
 
 REM 2. Tạo thư mục đích
 set "dest=Vezyl_Translator_%version%"

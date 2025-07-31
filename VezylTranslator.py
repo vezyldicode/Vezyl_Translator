@@ -14,6 +14,7 @@ import sys
 import traceback
 import os
 import subprocess
+import time
 from datetime import datetime
 
 
@@ -24,9 +25,27 @@ def external_crash_handler(exc_type, exc_value, exc_traceback):
         
     error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
     
+    # Xử lý lỗi clipboard một cách nhẹ nhàng - không crash app
+    if any(keyword in error_msg.lower() for keyword in [
+        'pyperclipwindowsexception', 'openclipboard', 'clipboard',
+        'access denied', 'sharing violation'
+    ]):
+        print("Lỗi truy cập clipboard - tiếp tục hoạt động bình thường")
+        print(f"Chi tiết lỗi: {exc_value}")
+        
+        # Log lỗi clipboard cho debugging
+        try:
+            with open("clipboard_errors.log", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Clipboard Error: {exc_value}\n")
+        except:
+            pass
+        
+        return  # Không crash khi gặp lỗi clipboard
+    
     # Check if we're in startup mode by checking command line args
     in_startup_mode = any('--startup-dir' in arg for arg in sys.argv if isinstance(arg, str))
-    
+
+
     # Use a simpler error handling approach during startup
     if in_startup_mode:
         try:
