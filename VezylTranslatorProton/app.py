@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Optional, Callable, Dict, Any
 
 import customtkinter as ctk
+import tkinter.messagebox as msgbox
 from VezylTranslatorNeutron import constant
 
 
@@ -55,6 +56,88 @@ def load_locale(locale_code, locales_dir=None):
 def _(key):
     """Get localized string by key"""
     return _locale_dict.get(key, key)
+
+
+def check_required_files():
+    """
+    Kiểm tra tất cả các file cần thiết trong folder resources và config.
+    Trả về True nếu tất cả file đều có, False nếu thiếu bất kỳ file nào.
+    """
+    # Danh sách file cần thiết trong thư mục resources (trừ folder marian_models)
+    required_resources_files = [
+        "fav.png",
+        "favorite.png", 
+        "fav_clicked.png",
+        "history.png",
+        "logo.ico",
+        "logo.png",
+        "logo_black.ico",
+        "logo_black.png",
+        "logo_black_bg.png",
+        "logo_red.ico",
+        "reverse.png",
+        "save_btn.png",
+        "settings.png",
+        "version"
+    ]
+    
+    # Danh sách file cần thiết trong thư mục resources/locales
+    required_locales_files = [
+        "en.json"
+    ]
+    
+    # Danh sách file cần thiết trong thư mục config
+    required_config_files = [
+        "advanced_config.ini",
+        "client.toml",
+        "general.json", 
+        "performance.json"
+    ]
+    
+    missing_files = []
+    
+    # Kiểm tra thư mục resources
+    resources_dir = os.path.join(os.getcwd(), "resources")
+    if not os.path.exists(resources_dir):
+        missing_files.append("Directory 'resources' does not exist")
+    else:
+        for filename in required_resources_files:
+            file_path = os.path.join(resources_dir, filename)
+            if not os.path.exists(file_path):
+                missing_files.append(f"resources/{filename}")
+        
+        # Kiểm tra thư mục locales
+        locales_dir = os.path.join(resources_dir, "locales")
+        if not os.path.exists(locales_dir):
+            missing_files.append("Directory 'resources/locales' does not exist")
+        else:
+            for filename in required_locales_files:
+                file_path = os.path.join(locales_dir, filename)
+                if not os.path.exists(file_path):
+                    missing_files.append(f"resources/locales/{filename}")
+    
+    # Kiểm tra thư mục config
+    config_dir = os.path.join(os.getcwd(), "config")
+    if not os.path.exists(config_dir):
+        missing_files.append("Directory 'config' does not exist")
+    else:
+        for filename in required_config_files:
+            file_path = os.path.join(config_dir, filename)
+            if not os.path.exists(file_path):
+                missing_files.append(f"config/{filename}")
+    
+    # Nếu có file bị thiếu, hiển thị thông báo lỗi
+    if missing_files:
+        error_message = "Cannot start the application!\n\nThe following files are missing:\n\n"
+        for file in missing_files:
+            error_message += f"• {file}\n"
+        error_message += "\nPlease check your application installation."
+        
+        # Hiển thị MessageBox lỗi với tên app + Error
+        msgbox.showerror(f"{constant.SOFTWARE_NAME} Error", error_message)
+        return False
+    
+    return True
 
 
 class CrashHandler:
@@ -620,6 +703,11 @@ def main():
             print(f"Changed working directory to: {args.app_dir}")
         except Exception as e:
             print(f"Failed to set working directory: {e}")
+    
+    # Kiểm tra các file cần thiết trước khi khởi động
+    if not check_required_files():
+        # Nếu thiếu file, thoát chương trình
+        sys.exit(1)
     
     # Create and run application
     app = create_app()

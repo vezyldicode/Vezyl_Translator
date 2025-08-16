@@ -1,55 +1,121 @@
 @echo off
+setlocal EnableDelayedExpansion
 set FILENAME=VezylTranslator
+set BUILD_START_TIME=%TIME%
 
+echo.
 echo ===============================================
-echo � ONEDIR BUILD - Faster Startup  
+echo VEZYL TRANSLATOR - ONEDIR BUILD SYSTEM
 echo ===============================================
+echo Build started at: %BUILD_START_TIME%
+echo Project: %FILENAME%
+echo Mode: OneDir (Faster Startup)
+echo ===============================================
+echo.
 
-REM Check bootstrap template exists
+REM Check prerequisites
+echo [1/6] Checking prerequisites...
 if not exist "bootstrap_onedir_build.py" (
-    echo ❌ ERROR: bootstrap_onedir_build.py not found!
-    echo Please make sure the template file exists.
+    echo ERROR: bootstrap_onedir_build.py not found!
+    echo Please make sure the bootstrap template exists in the project directory.
+    echo Current directory: %CD%
     pause
     exit /b 1
 )
 
+if not exist "%FILENAME%.py" (
+    echo ERROR: %FILENAME%.py not found!
+    echo Please make sure the main Python file exists.
+    pause
+    exit /b 1
+)
+
+echo Bootstrap template found
+echo Main Python file found
+
 REM Create distribution folder
-mkdir dist_onedir
-copy %FILENAME%.py dist_onedir\
-
-REM Encrypt with pyarmor (onedir protection)
-echo 🔒 Encrypting files with PyArmor...
-pyarmor gen --output dist_onedir bootstrap_onedir_build.py
-if not exist "dist_onedir\bootstrap_onedir_build.py" (
-    echo ⚠️  PyArmor encryption failed, using original bootstrap
-    copy bootstrap_onedir_build.py dist_onedir\
+echo.
+echo [2/6] Preparing build directories...
+if exist "dist_onedir" (
+    echo Cleaning existing dist_onedir...
+    rmdir /S /Q "dist_onedir" >nul 2>&1
+)
+mkdir "dist_onedir" >nul 2>&1
+if not exist "dist_onedir" (
+    echo ERROR: Failed to create dist_onedir directory!
+    pause
+    exit /b 1
 )
 
-pyarmor gen --output dist_onedir %FILENAME%.py
-if not exist "dist_onedir\%FILENAME%.py" (
-    echo ⚠️  PyArmor encryption failed for main file
+echo Copying main files...
+copy "%FILENAME%.py" "dist_onedir\" >nul 2>&1
+if !ERRORLEVEL! neq 0 (
+    echo ERROR: Failed to copy %FILENAME%.py!
+    pause
+    exit /b 1
+)
+echo Build directories prepared
+
+echo.
+echo [3/6] Code protection (PyArmor)...
+echo Attempting to encrypt bootstrap file...
+
+REM Check if PyArmor is available
+pyarmor --version >nul 2>&1
+if !ERRORLEVEL! neq 0 (
+    echo PyArmor not found in PATH - skipping encryption
+    echo Using original files without protection
+    copy "bootstrap_onedir_build.py" "dist_onedir\" >nul 2>&1
+    goto :skip_pyarmor
 )
 
-REM Build with PyInstaller - ONEDIR mode for faster startup
-echo 📦 Building onedir executable...
-
-REM Check if encrypted file exists
-if exist "dist_onedir\bootstrap_onedir_build.py" (
-    echo ✅ Using encrypted bootstrap_onedir_build.py
-    set "BOOTSTRAP_FILE=dist_onedir\bootstrap_onedir_build.py"
+REM Encrypt bootstrap file
+pyarmor gen --output "dist_onedir" "bootstrap_onedir_build.py" >nul 2>&1
+if !ERRORLEVEL! neq 0 (
+    echo Bootstrap encryption failed - using original
+    copy "bootstrap_onedir_build.py" "dist_onedir\" >nul 2>&1
 ) else (
-    echo ⚠️  Encrypted file not found, using original
-    set "BOOTSTRAP_FILE=bootstrap_onedir_build.py"
+    echo Bootstrap file encrypted successfully
 )
 
-echo Using bootstrap file: %BOOTSTRAP_FILE%
+REM Encrypt main file
+echo Attempting to encrypt main file...
+pyarmor gen --output "dist_onedir" "%FILENAME%.py" >nul 2>&1
+if !ERRORLEVEL! neq 0 (
+    echo Main file encryption failed - build will continue
+) else (
+    echo Main file encrypted successfully
+)
 
+:skip_pyarmor
+if not exist "dist_onedir\bootstrap_onedir_build.py" (
+    echo ERROR: Bootstrap file missing after encryption step!
+    pause
+    exit /b 1
+)
+
+echo.
+echo [4/6] PyInstaller compilation...
+
+REM Determine bootstrap file to use
+if exist "dist_onedir\bootstrap_onedir_build.py" (
+    set "BOOTSTRAP_FILE=dist_onedir\bootstrap_onedir_build.py"
+    echo Using encrypted bootstrap file
+) else (
+    set "BOOTSTRAP_FILE=bootstrap_onedir_build.py"
+    echo Using original bootstrap file
+)
+
+echo Bootstrap: !BOOTSTRAP_FILE!
+echo Starting PyInstaller compilation...
+echo This may take several minutes, please wait...
+
+REM Execute PyInstaller with comprehensive settings
 pyinstaller --onedir ^
 --noconsole ^
 --clean ^
 --icon=resources\logo_black.ico ^
 --optimize=2 ^
---clean ^
 --noconfirm ^
 --hidden-import=tkinter ^
 --hidden-import=tkinter.ttk ^
@@ -62,13 +128,22 @@ pyinstaller --onedir ^
 --hidden-import=keyboard ^
 --hidden-import=toml ^
 --hidden-import=json ^
+--hidden-import=configparser ^
 --hidden-import=requests ^
 --hidden-import=googletrans ^
 --hidden-import=langdetect ^
+--hidden-import=os ^
+--hidden-import=sys ^
+--hidden-import=time ^
+--hidden-import=subprocess ^
 --hidden-import=Crypto ^
 --hidden-import=Crypto.Cipher ^
 --hidden-import=Crypto.Cipher.AES ^
 --hidden-import=Crypto.Random ^
+--hidden-import=base64 ^
+--hidden-import=pathlib ^
+--hidden-import=dataclasses ^
+--hidden-import=typing ^
 --exclude-module=transformers ^
 --exclude-module=torch ^
 --exclude-module=tensorflow ^
@@ -89,57 +164,132 @@ pyinstaller --onedir ^
 --add-data "VezylTranslatorProton;VezylTranslatorProton" ^
 --add-data "VezylTranslatorElectron;VezylTranslatorElectron" ^
 --name %FILENAME% ^
-%BOOTSTRAP_FILE%
+!BOOTSTRAP_FILE! >build_log.txt 2>&1
 
-REM Check build result
-if exist "dist\%FILENAME%" (
-    echo.
-    echo ===============================================
-    echo ✅ ONEDIR BUILD COMPLETED!
-    echo ===============================================
-    echo.
-    echo 🎯 Features:
-    echo - ONEDIR build for faster startup
-    echo - Minimal imports in bootstrap
-    echo - Smaller file size per component
-    echo - Quick loading screen
-    echo - PyArmor protection maintained
-    echo.
-    echo 📁 Output: dist\%FILENAME%\
-    echo.
-    
-    echo 🧹 Cleaning up and organizing files...
-    
-    REM Move built files to root directory
-    echo - Moving %FILENAME%.exe to root...
-    move "dist\%FILENAME%\%FILENAME%.exe" . >nul 2>&1
-    
-    echo - Moving _internal folder to root...
-    if exist "_internal" rmdir /S /Q "_internal"
-    robocopy "dist\%FILENAME%\_internal" "_internal" /E /MOVE /NFL /NDL /NJH /NJS
-    
-    REM Clean up build folders
-    echo - Removing build artifacts...
-    rmdir /S /Q "dist" 2>nul
-    rmdir /S /Q "dist_onedir" 2>nul
-    rmdir /S /Q "build" 2>nul
-    rmdir /S /Q "__pycache__" 2>nul
-    del /Q "%FILENAME%.spec" 2>nul
-    
-    echo.
-    echo ===============================================
-    echo ✅ BUILD AND CLEANUP COMPLETED!
-    echo ===============================================
-    echo.
-    echo 🎯 Final structure:
-    echo - %FILENAME%.exe (in root)
-    echo - _internal\ (folder in root)
-    echo.
-    echo 🚀 Ready to run: %FILENAME%.exe
-    echo.
-) else (
-    echo.
-    echo ❌ ERROR: OneDir build failed!
+REM Check PyInstaller exit code
+if !ERRORLEVEL! neq 0 (
+    echo ERROR: PyInstaller compilation failed!
+    echo Build log saved to: build_log.txt
+    echo Last 10 lines of build log:
+    echo ----------------------------------------
+    powershell "Get-Content build_log.txt | Select-Object -Last 10"
+    echo ----------------------------------------
+    echo Common solutions:
+    echo    - Check if all dependencies are installed
+    echo    - Verify Python environment is correct
+    echo    - Ensure no files are locked by other processes
     pause
     exit /b 1
 )
+
+echo PyInstaller compilation completed successfully
+
+echo.
+echo [5/6] Verifying build output...
+
+REM Check if executable was created
+if not exist "dist\%FILENAME%\%FILENAME%.exe" (
+    echo ERROR: Executable not found after compilation!
+    echo Expected location: dist\%FILENAME%\%FILENAME%.exe
+    echo Checking what was actually created...
+    if exist "dist" (
+        echo Contents of dist directory:
+        dir /B "dist" 2>nul
+        if exist "dist\%FILENAME%" (
+            echo Contents of dist\%FILENAME% directory:
+            dir /B "dist\%FILENAME%" 2>nul
+        )
+    ) else (
+        echo No dist directory found!
+    )
+    echo Build log available in: build_log.txt
+    pause
+    exit /b 1
+)
+
+echo Executable created successfully
+echo Checking file size...
+for %%F in ("dist\%FILENAME%\%FILENAME%.exe") do (
+    set FILE_SIZE=%%~zF
+    set /a "SIZE_MB=!FILE_SIZE!/1048576"
+    echo Executable size: !SIZE_MB! MB
+)
+
+echo.
+echo [6/6] Organizing and cleaning up...
+
+REM Create backup location info
+echo Creating build info...
+echo Build Date: %DATE% %TIME% > build_info.txt
+echo Build Type: OneDir >> build_info.txt
+echo File Size: !SIZE_MB! MB >> build_info.txt
+
+REM Move files to root directory
+echo Moving executable to root...
+if exist "%FILENAME%.exe" (
+    echo Removing existing executable...
+    del "%FILENAME%.exe" >nul 2>&1
+)
+move "dist\%FILENAME%\%FILENAME%.exe" . >nul 2>&1
+if !ERRORLEVEL! neq 0 (
+    echo Failed to move executable to root
+    echo Executable remains in: dist\%FILENAME%\
+    goto :skip_move
+)
+
+echo Moving _internal folder...
+if exist "_internal" (
+    echo Removing existing _internal...
+    rmdir /S /Q "_internal" >nul 2>&1
+)
+robocopy "dist\%FILENAME%\_internal" "_internal" /E /MOVE /NFL /NDL /NJH /NJS >nul 2>&1
+if !ERRORLEVEL! gtr 3 (
+    echo Issues moving _internal folder (Error: !ERRORLEVEL!)
+    echo _internal remains in: dist\%FILENAME%\_internal
+)
+
+:skip_move
+echo Cleaning build artifacts...
+rmdir /S /Q "dist" >nul 2>&1
+rmdir /S /Q "dist_onedir" >nul 2>&1  
+rmdir /S /Q "build" >nul 2>&1
+rmdir /S /Q "__pycache__" >nul 2>&1
+del /Q "%FILENAME%.spec" >nul 2>&1
+del /Q "build_log.txt" >nul 2>&1
+
+REM Final verification and summary
+echo.
+set BUILD_END_TIME=%TIME%
+echo ===============================================
+echo BUILD COMPLETED SUCCESSFULLY!
+echo ===============================================
+echo.
+echo BUILD SUMMARY:
+echo Started:  %BUILD_START_TIME%
+echo Finished: %BUILD_END_TIME%
+echo Size:     !SIZE_MB! MB
+echo.
+pause
+if exist "%FILENAME%.exe" (
+    echo FINAL STRUCTURE (Root Directory):
+    echo %FILENAME%.exe
+    echo _internal\ (dependencies)
+    echo config\ (configuration files)  
+    echo resources\ (assets)
+    echo build_info.txt
+    echo.
+    echo Ready to run: %FILENAME%.exe
+    echo You can now move these files to your desired folder
+) else (
+    echo BUILD OUTPUT LOCATION:
+    echo dist\%FILENAME%\
+    echo %FILENAME%.exe
+    echo _internal\ (dependencies)
+    echo.
+    echo Files are ready in the dist folder
+)
+
+echo.
+echo Build process completed successfully!
+echo ===============================================
+echo.
