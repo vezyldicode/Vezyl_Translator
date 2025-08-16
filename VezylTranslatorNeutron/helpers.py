@@ -115,8 +115,8 @@ def show_confirm_popup(
             on_cancel()
     
     # Button text with localization
-    confirm_text = _._("confirm_popup")["confirm"] if _ else "Confirm"
-    cancel_text = _._("confirm_popup")["cancel"] if _ else "Cancel"
+    confirm_text = _("confirm_popup")["confirm"] if _ else "Confirm"
+    cancel_text = _("confirm_popup")["cancel"] if _ else "Cancel"
     
     confirm_btn = ctk.CTkButton(
         btn_frame, text=confirm_text, width=120, fg_color="#00ff99", text_color="#23272f",

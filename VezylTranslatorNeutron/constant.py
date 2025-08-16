@@ -12,7 +12,7 @@ from pathlib import Path
 
 # === Software Information ===
 SOFTWARE_NAME: Final[str] = "Vezyl Translator"
-SOFTWARE_VERSION: Final[str] = "1.5.14"
+SOFTWARE_VERSION: Final[str] = "1.5.15"
 
 # Backward compatibility
 SOFTWARE = SOFTWARE_NAME
