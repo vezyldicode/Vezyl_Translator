@@ -156,7 +156,7 @@ class TabController:
             
             # Add to favorites option
             menu.add_command(
-                label=self._("history")["menu"]["add_to_favorites"], 
+                label=self._("history")["menu"]["add_to_favorite"], 
                 command=lambda: (
                     self.add_to_favorites(content, item.get("translated_text", ""), src_lang, dest_lang),
                     print("Added to favorites")
@@ -165,11 +165,11 @@ class TabController:
             
             # Copy options
             menu.add_command(
-                label=self._("history")["menu"]["copy_original"], 
+                label="Copy original text", 
                 command=lambda: self.copy_text_to_clipboard(content)
             )
             menu.add_command(
-                label=self._("history")["menu"]["copy_translated"], 
+                label="Copy translated text", 
                 command=lambda: self.copy_text_to_clipboard(item.get("translated_text", ""))
             )
             
@@ -196,7 +196,7 @@ class TabController:
             
             # Copy options
             menu.add_command(
-                label=self._("favorite")["menu"]["copy_original"], 
+                label="Copy original text", 
                 command=lambda: self.copy_text_to_clipboard(original_text)
             )
             
