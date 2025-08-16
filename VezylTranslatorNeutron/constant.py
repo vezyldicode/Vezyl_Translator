@@ -16,9 +16,6 @@ SOFTWARE_VERSION: Final[str] = "1.5.3"
 SOFTWARE_VERSION_MAJOR: Final[int] = 1
 SOFTWARE_VERSION_MINOR: Final[int] = 5
 SOFTWARE_VERSION_PATCH: Final[int] = 3
-SOFTWARE_URL: Final[str] = "https://vezyl.io/translator"
-SOFTWARE_AUTHOR: Final[str] = "Tuan Viet Nguyen"
-SOFTWARE_COPYRIGHT: Final[str] = "Copyright (c) 2025 Vezyl. All rights reserved."
 
 # Backward compatibility
 SOFTWARE = SOFTWARE_NAME
@@ -59,31 +56,11 @@ FAVORITE_LOG_FILE: Final[str] = os.path.join(LOCAL_DIR, "favorite_log.enc")
 
 # === Resource Files ===
 LOGO_FILE: Final[str] = os.path.join(RESOURCES_DIR, "logo.ico")
-LOGO_BLACK_FILE: Final[str] = os.path.join(RESOURCES_DIR, "logo_black.ico")
-LOGO_RED_FILE: Final[str] = os.path.join(RESOURCES_DIR, "logo_red.ico")
-LOGO_PNG_FILE: Final[str] = os.path.join(RESOURCES_DIR, "logo.png")
-VERSION_FILE: Final[str] = os.path.join(RESOURCES_DIR, "version")
-
-# Icon assets
-FAVORITE_ICON: Final[str] = os.path.join(RESOURCES_DIR, "favorite.png")
-HISTORY_ICON: Final[str] = os.path.join(RESOURCES_DIR, "history.png")
-SETTINGS_ICON: Final[str] = os.path.join(RESOURCES_DIR, "settings.png")
-REVERSE_ICON: Final[str] = os.path.join(RESOURCES_DIR, "reverse.png")
-SAVE_ICON: Final[str] = os.path.join(RESOURCES_DIR, "save_btn.png")
 
 
 # === Application Defaults ===
 DEFAULT_LOCALE: Final[str] = "en"
 DEFAULT_THEME: Final[str] = "dark"
-DEFAULT_FONT: Final[str] = "Segoe UI"
-DEFAULT_FONT_SIZE: Final[int] = 12
-
-# Window defaults
-DEFAULT_WINDOW_WIDTH: Final[int] = 1000
-DEFAULT_WINDOW_HEIGHT: Final[int] = 700
-MIN_WINDOW_WIDTH: Final[int] = 800
-MIN_WINDOW_HEIGHT: Final[int] = 600
-
 
 # === Supported Languages ===
 SUPPORTED_LOCALES: Final[List[str]] = ["en", "vi"]
@@ -115,10 +92,6 @@ LANGUAGE_CODES: Final[Dict[str, str]] = {
     "Korean": "ko",
 }
 
-REVERSE_LANGUAGE_CODES: Final[Dict[str, str]] = {
-    v: k for k, v in LANGUAGE_CODES.items()
-}
-
 
 # === Performance Constants ===
 class PerformanceSettings:
@@ -132,41 +105,7 @@ class PerformanceSettings:
     MEMORY_CLEANUP_INTERVAL: Final[int] = 60  # seconds
 
 
-# === Hotkey Constants ===
-class HotkeyDefaults:
-    """Default hotkey combinations"""
-    GLOBAL_TRANSLATE: Final[str] = "ctrl+shift+t"
-    GLOBAL_REVERSE: Final[str] = "ctrl+shift+r"
-    SHOW_HIDE: Final[str] = "ctrl+shift+v"
-    SCREENSHOT_TRANSLATE: Final[str] = "ctrl+shift+s"
 
-
-# === Error Messages ===
-class ErrorMessages:
-    """Centralized error message constants"""
-    FILE_NOT_FOUND: Final[str] = "File not found: {file_path}"
-    INVALID_CONFIG: Final[str] = "Invalid configuration: {config_name}"
-    NETWORK_FAILURE: Final[str] = "Network connection failed: {details}"
-    TRANSLATION_FAILED: Final[str] = "Translation failed: {provider} - {error}"
-    MODEL_LOAD_FAILED: Final[str] = "Model loading failed: {model_name}"
-    PERMISSION_DENIED: Final[str] = "Permission denied: {action}"
-    RESOURCE_NOT_FOUND: Final[str] = "Resource not found: {resource}"
-    
-    # Common patterns
-    GENERIC_ERROR: Final[str] = "An error occurred: {details}"
-    TIMEOUT_ERROR: Final[str] = "Operation timed out after {seconds} seconds"
-    VALIDATION_ERROR: Final[str] = "Validation failed: {field} - {reason}"
-
-
-# === Success Messages ===
-class SuccessMessages:
-    """Centralized success message constants"""
-    CONFIG_SAVED: Final[str] = "Configuration saved successfully"
-    TRANSLATION_COMPLETE: Final[str] = "Translation completed"
-    MODEL_LOADED: Final[str] = "Model loaded: {model_name}"
-    CACHE_CLEARED: Final[str] = "Cache cleared successfully"
-    EXPORT_COMPLETE: Final[str] = "Export completed: {file_path}"
-    IMPORT_COMPLETE: Final[str] = "Import completed: {count} items"
 
 
 # === Environment Variables ===
@@ -184,29 +123,9 @@ class EnvVars:
 class APIConstants:
     """API-related constants"""
     USER_AGENT: Final[str] = f"{SOFTWARE_NAME}/{SOFTWARE_VERSION}"
-    REQUEST_TIMEOUT: Final[int] = 10  # seconds
-    MAX_RETRIES: Final[int] = 3
-    RETRY_DELAY: Final[float] = 1.0  # seconds
-    
-    # Google Translate
-    GOOGLE_TRANSLATE_URL: Final[str] = "https://translate.googleapis.com/translate_a/single"
-    
-    # Rate limiting
-    REQUESTS_PER_MINUTE: Final[int] = 60
-    BURST_LIMIT: Final[int] = 10
 
 
-# === File System Constants ===
-class FileSystem:
-    """File system related constants"""
-    MAX_FILE_SIZE: Final[int] = 10 * 1024 * 1024  # 10MB
-    BACKUP_EXTENSION: Final[str] = ".bak"
-    TEMP_EXTENSION: Final[str] = ".tmp"
-    
-    # File patterns
-    CONFIG_PATTERN: Final[str] = "*.json"
-    LOCALE_PATTERN: Final[str] = "*.json"
-    MODEL_PATTERN: Final[str] = "pytorch_model.bin"
+
 
 
 # === Cache Variables ===
@@ -225,11 +144,6 @@ def get_full_version_string() -> str:
     return f"{SOFTWARE_NAME} v{SOFTWARE_VERSION}"
 
 
-def get_user_agent() -> str:
-    """Get user agent string for HTTP requests"""
-    return APIConstants.USER_AGENT
-
-
 def is_debug_mode() -> bool:
     """Check if debug mode is enabled"""
     return os.getenv(EnvVars.VEZYL_DEBUG, "0").lower() in ("1", "true", "yes")
@@ -238,11 +152,6 @@ def is_debug_mode() -> bool:
 def is_fast_startup() -> bool:
     """Check if fast startup mode is enabled"""
     return os.getenv(EnvVars.VEZYL_FAST_STARTUP, "0") == "1"
-
-
-def get_log_level() -> str:
-    """Get configured log level"""
-    return os.getenv(EnvVars.VEZYL_LOG_LEVEL, "INFO").upper()
 
 
 # === Validation Functions ===
