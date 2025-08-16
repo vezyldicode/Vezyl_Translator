@@ -145,43 +145,85 @@ class TrayService:
     def update_tray_icon(self, icon_path):
         """Update tray icon image"""
         if not self.tray_icon_instance:
+            print("No tray icon instance available for update")
             return False
         
         try:
             if os.path.exists(icon_path):
+                print(f"Loading new icon from: {icon_path}")
                 new_icon = Image.open(icon_path)
+                
+                # Update icon
                 self.tray_icon_instance.icon = new_icon
                 
-                # Refresh icon display
-                self.tray_icon_instance.visible = False
-                time.sleep(0.05)
-                self.tray_icon_instance.visible = True
+                # Force icon refresh using the pystray recommended method
+                try:
+                    # Try to refresh the icon through visibility toggle
+                    original_visible = self.tray_icon_instance.visible
+                    if original_visible:
+                        self.tray_icon_instance.visible = False
+                        time.sleep(0.05)
+                        self.tray_icon_instance.visible = True
+                    print(f"Successfully updated tray icon: {os.path.basename(icon_path)}")
+                except Exception as refresh_error:
+                    print(f"Icon updated but refresh failed: {refresh_error}")
                 
                 return True
+            else:
+                print(f"Icon file does not exist: {icon_path}")
+                return False
+                
         except Exception as e:
             print(f"Error updating tray icon: {e}")
+            import traceback
+            traceback.print_exc()
         
         return False
     
     def update_icon_for_clipboard_state(self, clipboard_enabled, get_windows_theme_func):
         """Update icon based on clipboard watcher state"""
         if not self.tray_icon_instance:
+            print("No tray instance available for clipboard state update")
             return False
         
         try:
+            # Get base directory for icon paths
+            base_dir = os.path.dirname(os.path.abspath(os.sys.argv[0]))
+            
             # Choose appropriate icon
             if not clipboard_enabled:
-                icon_path = os.path.join(RESOURCES_DIR, "logo_red.ico")
+                icon_path = os.path.join(base_dir, RESOURCES_DIR, "logo_red.ico")
+                expected_state = "DISABLED (red)"
             else:
-                if get_windows_theme_func() == "dark":
-                    icon_path = os.path.join(RESOURCES_DIR, "logo.ico")
+                theme = get_windows_theme_func()
+                if theme == "dark":
+                    icon_path = os.path.join(base_dir, RESOURCES_DIR, "logo.ico")
+                    expected_state = "ENABLED (white for dark theme)"
                 else:
-                    icon_path = os.path.join(RESOURCES_DIR, "logo_black.ico")
+                    icon_path = os.path.join(base_dir, RESOURCES_DIR, "logo_black.ico")
+                    expected_state = "ENABLED (black for light theme)"
+            
+            print(f"Clipboard watcher state: {expected_state}")
+            print(f"Selected icon path: {icon_path}")
+            
+            # Verify icon file exists before attempting update
+            if not os.path.exists(icon_path):
+                print(f"ERROR: Icon file not found: {icon_path}")
+                # Try fallback to default icon
+                fallback_path = os.path.join(base_dir, RESOURCES_DIR, "logo.ico")
+                if os.path.exists(fallback_path):
+                    print(f"Using fallback icon: {fallback_path}")
+                    icon_path = fallback_path
+                else:
+                    print("No fallback icon available")
+                    return False
             
             return self.update_tray_icon(icon_path)
             
         except Exception as e:
             print(f"Error updating icon for clipboard state: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     # === Status and Cleanup ===
@@ -222,10 +264,12 @@ def safe_show_homepage_from_tray():
 def run_tray_icon_in_thread(software_name, get_windows_theme, toggle_clipboard_watcher, 
                            show_homepage, on_quit, menu_texts):
     """Legacy wrapper for running tray icon"""
-    return _tray_service.start_tray_icon(
+    success = _tray_service.start_tray_icon(
         software_name, get_windows_theme, toggle_clipboard_watcher,
         show_homepage, on_quit, menu_texts
     )
+    print(f"Tray service started: {success}, Instance available: {_tray_service.get_tray_instance() is not None}")
+    return success
 
 
 # === Public API ===

@@ -262,7 +262,7 @@ def show_popup(translator, text, x, y, main_window_instance, language_interface,
     # Nút "mở trong cửa sổ"
     open_label = ctk.CTkLabel(
         header_frame,
-        text=_._("popup")["open_translate_page"],
+        text=_("popup")["open_translate_page"],
         font=(translator.font, 13, "underline"),
         text_color="#00ff99",
         cursor="hand2"

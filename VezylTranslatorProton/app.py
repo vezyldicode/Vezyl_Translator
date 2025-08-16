@@ -446,6 +446,16 @@ class VezylTranslatorApp:
         from VezylTranslatorNeutron.helpers import get_windows_theme
         from VezylTranslatorNeutron.clipboard_service import toggle_clipboard_watcher as unified_toggle_clipboard_watcher
         
+        def safe_toggle_clipboard_watcher():
+            """Safely toggle clipboard watcher with proper error handling"""
+            try:
+                print("Toggling clipboard watcher from tray...")
+                unified_toggle_clipboard_watcher(self)
+            except Exception as e:
+                print(f"Error toggling clipboard watcher from tray: {e}")
+                import traceback
+                traceback.print_exc()
+        
         def safe_show_homepage():
             """Safely show homepage with main window recreation if needed"""
             if self.main_window is not None:
@@ -489,7 +499,7 @@ class VezylTranslatorApp:
         run_tray_icon_in_thread(
             constant.SOFTWARE,
             get_windows_theme,
-            lambda: unified_toggle_clipboard_watcher(self),
+            safe_toggle_clipboard_watcher,  # Use wrapper function instead of lambda
             safe_show_homepage,
             on_quit,
             menu_texts

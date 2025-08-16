@@ -277,15 +277,17 @@ class ClipboardService:
     def toggle_watcher(self, translator_instance):
         """Toggle clipboard watcher and update tray icon"""
         if translator_instance is None:
+            print("Error: translator_instance is None")
             return
         
-        # Toggle state
-        translator_instance.clipboard_watcher_enabled = not getattr(
-            translator_instance, "clipboard_watcher_enabled", True
-        )
+        # Get current state
+        old_state = getattr(translator_instance, "clipboard_watcher_enabled", True)
         
-        state = "ON" if translator_instance.clipboard_watcher_enabled else "OFF"
-        print(f"Clipboard watcher toggled: {state}")
+        # Toggle state
+        translator_instance.clipboard_watcher_enabled = not old_state
+        
+        new_state = translator_instance.clipboard_watcher_enabled
+        print(f"Clipboard watcher toggled: {old_state} -> {new_state}")
         
         # Play notification sound (non-blocking)
         try:
@@ -297,43 +299,32 @@ class ClipboardService:
             pass  # Ignore sound errors
         
         # Update tray icon in background thread
+        print("Updating tray icon for clipboard state change...")
         self._update_tray_icon_async(translator_instance)
     
     def _update_tray_icon_async(self, translator_instance):
         """Update tray icon in background thread"""
         def update_tray_icon():
-            from VezylTranslatorNeutron.tray_service import TrayService
-            tray_service = TrayService()
-            tray_instance = tray_service.get_tray_instance()
-            
-            if tray_instance is None:
-                return
-            
             try:
+                # Import tray service module to get the global instance
+                from VezylTranslatorNeutron.tray_service import _tray_service
                 from VezylTranslatorNeutron.helpers import get_windows_theme
                 
-                # Choose appropriate icon
-                if not translator_instance.clipboard_watcher_enabled:
-                    icon_path = os.path.join(RESOURCES_DIR, "logo_red.ico")
-                else:
-                    if get_windows_theme() == "dark":
-                        icon_path = os.path.join(RESOURCES_DIR, "logo.ico")
-                    else:
-                        icon_path = os.path.join(RESOURCES_DIR, "logo_black.ico")
+                # Use the dedicated method for updating clipboard state icon
+                success = _tray_service.update_icon_for_clipboard_state(
+                    translator_instance.clipboard_watcher_enabled,
+                    get_windows_theme
+                )
                 
-                # Load and set icon if file exists
-                if os.path.exists(icon_path):
-                    new_icon = Image.open(icon_path)
-                    tray_instance.icon = new_icon
+                if success:
+                    print(f"Tray icon successfully updated: {'enabled' if translator_instance.clipboard_watcher_enabled else 'disabled'}")
+                else:
+                    print("Failed to update tray icon")
                     
-                    # Refresh icon with shorter delay
-                    tray_instance.visible = False
-                    time.sleep(0.05)
-                    tray_instance.visible = True
-                    
-                    print(f"Icon updated to {'red' if not translator_instance.clipboard_watcher_enabled else 'normal'}")
             except Exception as e:
-                print(f"Error updating icon: {e}")
+                print(f"Error updating tray icon: {e}")
+                import traceback
+                traceback.print_exc()
         
         # Run in background thread
         import threading
