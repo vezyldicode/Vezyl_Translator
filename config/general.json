@@ -14,7 +14,7 @@
   "show_homepage_at_startup": true,
   "always_show_transtale": false,
   "dest_lang": "vi",
-  "translation_model": "google",
+  "translation_model": "marian",
   "translation_models": {
     "google": "🌐 Google Translator",
     "marian": "🤖 Marian MT (Offline)"

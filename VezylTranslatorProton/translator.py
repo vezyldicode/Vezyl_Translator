@@ -304,11 +304,11 @@ class MarianTranslationProvider(BaseTranslationProvider):
     """Marian MT translation provider"""
     
     def __init__(self):
-        super().__init__("marian")
         self.model_manager = None
         self.transformers_available = False
         self.model_cache = {}
         self.tokenizer_cache = {}
+        super().__init__("marian")  # This calls _check_availability which sets model_manager
         self._check_transformers()
         self._load_dictionaries()
     
