@@ -12,10 +12,7 @@ from pathlib import Path
 
 # === Software Information ===
 SOFTWARE_NAME: Final[str] = "Vezyl Translator"
-SOFTWARE_VERSION: Final[str] = "1.5.3"
-SOFTWARE_VERSION_MAJOR: Final[int] = 1
-SOFTWARE_VERSION_MINOR: Final[int] = 5
-SOFTWARE_VERSION_PATCH: Final[int] = 3
+SOFTWARE_VERSION: Final[str] = "1.5.12"
 
 # Backward compatibility
 SOFTWARE = SOFTWARE_NAME
@@ -133,11 +130,6 @@ last_translated_text: str = ""  # Backward compatibility
 
 
 # === Utility Functions ===
-
-def get_version_tuple() -> tuple[int, int, int]:
-    """Get version as tuple of integers"""
-    return (SOFTWARE_VERSION_MAJOR, SOFTWARE_VERSION_MINOR, SOFTWARE_VERSION_PATCH)
-
 
 def get_full_version_string() -> str:
     """Get full version string with software name"""

@@ -8,6 +8,7 @@ Copyright (c) 2025 Vezyl. All rights reserved.
 import os
 import json
 import toml
+import configparser
 import base64
 from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass, field, asdict
@@ -89,6 +90,25 @@ class PerformanceConfig:
     translation_cache_size: int = 100
     max_concurrent_translations: int = 3
     startup_delay_ms: int = 100
+
+
+@dataclass
+class AdvancedConfig:
+    """Advanced configuration from advanced_config.ini"""
+    # Marian MT settings
+    marian_enabled: bool = True
+    auto_download_models: bool = True
+    max_concurrent_models: int = 2
+    enable_model_cache: bool = True
+    
+    # Performance settings  
+    lazy_load_transformers: bool = True
+    model_load_timeout: int = 30
+    debug_marian: bool = False
+    
+    # Fallback settings
+    auto_fallback_to_online: bool = True
+    default_fallback_service: str = "google"
     
 
 class ConfigManager:
@@ -98,11 +118,13 @@ class ConfigManager:
         self._app_config: Optional[AppConfig] = None
         self._client_config: Optional[ClientConfig] = None
         self._performance_config: Optional[PerformanceConfig] = None
+        self._advanced_config: Optional[AdvancedConfig] = None
         
         # Config file paths
         self.app_config_file = constant.DEFAULT_CONFIG_FILE
         self.client_config_file = constant.CLIENT_CONFIG_FILE
         self.performance_config_file = constant.PERFORMANCE_CONFIG_FILE
+        self.advanced_config_file = os.path.join(constant.CONFIG_DIR, "advanced_config.ini")
         
         # Ensure config directory exists
         self._ensure_config_directory()
@@ -264,21 +286,111 @@ class ConfigManager:
             print(f"Error saving performance config: {e}")
             return False
     
+    # === Advanced Configuration ===
+    
+    def load_advanced_config(self) -> AdvancedConfig:
+        """Load advanced configuration from INI file"""
+        if self._advanced_config is None:
+            self._advanced_config = self._load_advanced_config_from_file()
+        return self._advanced_config
+    
+    def _load_advanced_config_from_file(self) -> AdvancedConfig:
+        """Load advanced config from INI file"""
+        default_config = AdvancedConfig()
+        
+        try:
+            if os.path.exists(self.advanced_config_file):
+                parser = configparser.ConfigParser()
+                parser.read(self.advanced_config_file, encoding='utf-8')
+                
+                # Load Marian MT settings
+                if parser.has_section('marian_mt'):
+                    section = parser['marian_mt']
+                    default_config.marian_enabled = section.getboolean('enabled', True)
+                    default_config.auto_download_models = section.getboolean('auto_download_models', True)
+                    default_config.max_concurrent_models = section.getint('max_concurrent_models', 2)
+                    default_config.enable_model_cache = section.getboolean('enable_model_cache', True)
+                
+                # Load performance settings
+                if parser.has_section('performance'):
+                    section = parser['performance']
+                    default_config.lazy_load_transformers = section.getboolean('lazy_load_transformers', True)
+                    default_config.model_load_timeout = section.getint('model_load_timeout', 30)
+                    default_config.debug_marian = section.getboolean('debug_marian', False)
+                
+                # Load fallback settings
+                if parser.has_section('fallback'):
+                    section = parser['fallback']
+                    default_config.auto_fallback_to_online = section.getboolean('auto_fallback_to_online', True)
+                    default_config.default_fallback_service = section.get('default_fallback_service', 'google')
+                
+                print("[OK] Advanced config loaded successfully")
+            else:
+                print("[INFO] Advanced config file not found, using defaults")
+                
+        except Exception as e:
+            print(f"[ERROR] Failed to load advanced config: {e}")
+        
+        return default_config
+    
+    def save_advanced_config(self, config: Optional[AdvancedConfig] = None) -> bool:
+        """Save advanced configuration to INI file"""
+        if config is None:
+            config = self._advanced_config
+        
+        if config is None:
+            return False
+        
+        try:
+            parser = configparser.ConfigParser()
+            
+            # Marian MT section
+            parser.add_section('marian_mt')
+            parser.set('marian_mt', 'enabled', str(config.marian_enabled).lower())
+            parser.set('marian_mt', 'auto_download_models', str(config.auto_download_models).lower())
+            parser.set('marian_mt', 'max_concurrent_models', str(config.max_concurrent_models))
+            parser.set('marian_mt', 'enable_model_cache', str(config.enable_model_cache).lower())
+            
+            # Performance section
+            parser.add_section('performance')
+            parser.set('performance', 'lazy_load_transformers', str(config.lazy_load_transformers).lower())
+            parser.set('performance', 'model_load_timeout', str(config.model_load_timeout))
+            parser.set('performance', 'debug_marian', str(config.debug_marian).lower())
+            
+            # Fallback section
+            parser.add_section('fallback')
+            parser.set('fallback', 'auto_fallback_to_online', str(config.auto_fallback_to_online).lower())
+            parser.set('fallback', 'default_fallback_service', config.default_fallback_service)
+            
+            # Write to file
+            with open(self.advanced_config_file, 'w', encoding='utf-8') as f:
+                parser.write(f)
+                
+            self._advanced_config = config
+            print("[OK] Advanced config saved successfully")
+            return True
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to save advanced config: {e}")
+            return False
+    
     # === Unified Interface ===
     
-    def load_all_configs(self) -> tuple[AppConfig, ClientConfig, PerformanceConfig]:
+    def load_all_configs(self) -> tuple[AppConfig, ClientConfig, PerformanceConfig, AdvancedConfig]:
         """Load all configuration types"""
         return (
             self.load_app_config(),
             self.load_client_config(), 
-            self.load_performance_config()
+            self.load_performance_config(),
+            self.load_advanced_config()
         )
     
-    def reload_all_configs(self) -> tuple[AppConfig, ClientConfig, PerformanceConfig]:
+    def reload_all_configs(self) -> tuple[AppConfig, ClientConfig, PerformanceConfig, AdvancedConfig]:
         """Force reload all configurations from files"""
         self._app_config = None
         self._client_config = None
         self._performance_config = None
+        self._advanced_config = None
         return self.load_all_configs()
     
     def get_config_value(self, key: str, config_type: str = 'app') -> Any:
@@ -289,6 +401,8 @@ class ConfigManager:
             config = self.load_client_config()
         elif config_type == 'performance':
             config = self.load_performance_config()
+        elif config_type == 'advanced':
+            config = self.load_advanced_config()
         else:
             raise ValueError(f"Unknown config type: {config_type}")
         
@@ -308,6 +422,15 @@ class ConfigManager:
             if hasattr(config, key):
                 setattr(config, key, value)
                 return self.save_performance_config(config)
+        elif config_type == 'advanced':
+            config = self.load_advanced_config()
+            if hasattr(config, key):
+                setattr(config, key, value)
+                # Clear cache after updating
+                success = self.save_advanced_config(config)
+                if success:
+                    self._advanced_config = None  # Force reload next time
+                return success
         
         return False
     
@@ -441,6 +564,41 @@ def get_client_config() -> ClientConfig:
 def get_performance_config() -> PerformanceConfig:
     """Get performance configuration"""
     return get_config_manager().load_performance_config()
+
+
+def get_advanced_config() -> AdvancedConfig:
+    """Get advanced configuration"""
+    return get_config_manager().load_advanced_config()
+
+
+def is_marian_enabled() -> bool:
+    """Quick check if Marian MT is enabled"""
+    return get_advanced_config().marian_enabled
+
+
+def should_lazy_load_transformers() -> bool:
+    """Check if transformers should be lazy loaded"""
+    return get_advanced_config().lazy_load_transformers
+
+
+def get_model_load_timeout() -> int:
+    """Get model load timeout in seconds"""
+    return get_advanced_config().model_load_timeout
+
+
+def is_debug_marian_enabled() -> bool:
+    """Check if Marian debug is enabled"""
+    return get_advanced_config().debug_marian
+
+
+def get_fallback_service() -> str:
+    """Get default fallback translation service"""
+    return get_advanced_config().default_fallback_service
+
+
+def update_marian_enabled(enabled: bool) -> bool:
+    """Update Marian MT enabled status"""
+    return get_config_manager().set_config_value('marian_enabled', enabled, 'advanced')
 
 
 def update_app_setting(key: str, value: Any) -> bool:

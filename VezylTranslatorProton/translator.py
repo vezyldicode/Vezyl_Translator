@@ -29,6 +29,7 @@ except ImportError:
     GoogleTranslator = None
 
 from VezylTranslatorNeutron import constant
+from .config import is_marian_enabled, should_lazy_load_transformers
 
 
 # === Marian Model Manager (merged from marian_module.py) ===
@@ -308,6 +309,13 @@ class MarianTranslationProvider(BaseTranslationProvider):
         self.transformers_available = False
         self.model_cache = {}
         self.tokenizer_cache = {}
+        
+        # Check if Marian is enabled in advanced config
+        if not is_marian_enabled():
+            print("[INFO] Marian MT is disabled in advanced config")
+            self.is_available = False
+            return
+            
         super().__init__("marian")  # This calls _check_availability which sets model_manager
         self._check_transformers()
         self._load_dictionaries()
@@ -329,15 +337,52 @@ class MarianTranslationProvider(BaseTranslationProvider):
     
     def _check_transformers(self):
         """Check if transformers library is available"""
-        try:
-            from transformers import MarianMTModel, MarianTokenizer
-            self.transformers_available = True
-            self.MarianMTModel = MarianMTModel
-            self.MarianTokenizer = MarianTokenizer
-            print("[OK] Transformers library available for Marian MT")
-        except ImportError:
+        # Skip if Marian is disabled
+        if not is_marian_enabled():
             self.transformers_available = False
-            print("[WARNING] Transformers library not available for Marian MT")
+            return
+            
+        # Check if lazy loading is enabled
+        if should_lazy_load_transformers():
+            # Don't import now, just check if it can be imported
+            try:
+                import importlib.util
+                spec = importlib.util.find_spec("transformers")
+                if spec is not None:
+                    self.transformers_available = True
+                    print("[OK] Transformers library detected (lazy loading enabled)")
+                else:
+                    self.transformers_available = False
+                    print("[WARNING] Transformers library not found")
+            except Exception as e:
+                self.transformers_available = False
+                print(f"[WARNING] Error checking transformers: {e}")
+        else:
+            # Load immediately
+            try:
+                from transformers import MarianMTModel, MarianTokenizer
+                self.transformers_available = True
+                self.MarianMTModel = MarianMTModel
+                self.MarianTokenizer = MarianTokenizer
+                print("[OK] Transformers library loaded for Marian MT")
+            except ImportError:
+                self.transformers_available = False
+                print("[WARNING] Transformers library not available for Marian MT")
+                
+    def _lazy_load_transformers(self):
+        """Lazy load transformers library when needed"""
+        if not hasattr(self, 'MarianMTModel') or not hasattr(self, 'MarianTokenizer'):
+            try:
+                from transformers import MarianMTModel, MarianTokenizer
+                self.MarianMTModel = MarianMTModel
+                self.MarianTokenizer = MarianTokenizer
+                print("[OK] Transformers library lazy loaded for Marian MT")
+                return True
+            except ImportError as e:
+                print(f"[ERROR] Failed to lazy load transformers: {e}")
+                self.transformers_available = False
+                return False
+        return True
     
     def _load_dictionaries(self):
         """Load simple translation dictionaries for fallback"""
@@ -524,6 +569,10 @@ class MarianTranslationProvider(BaseTranslationProvider):
     def _translate_with_model(self, text: str, model_path: str, src_lang: str, dest_lang: str) -> Optional[TranslationResult]:
         """Translate using specific model"""
         try:
+            # Lazy load transformers if needed
+            if should_lazy_load_transformers() and not self._lazy_load_transformers():
+                return None
+                
             # Check required files
             required_files = ["pytorch_model.bin", "config.json"]
             for file in required_files:

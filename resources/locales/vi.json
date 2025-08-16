@@ -32,6 +32,7 @@
       "show_homepage_at_startup": "Hiển thị trang chủ khi khởi động",
       "always_show_translate": "Luôn hiển thị bong bóng dịch",
       "enable_ctrl_tracking": "Giữ ctrl và ấn tắt để thoát",
+      "enable_hotkeys": "Bật phím tắt",
       "hotkey": "Phím tắt mở trang chủ",
       "clipboard_hotkey": "Phím tắt dịch từ clipboard",
       "save_settings": "Lưu cài đặt"
