@@ -63,7 +63,7 @@ from VezylTranslatorProton.utils import (
     search_entries
 )
 from VezylTranslatorProton.clipboard_module import clipboard_watcher, get_clipboard_text, set_clipboard_text
-from VezylTranslatorProton.translate_module import translate_with_model
+from VezylTranslatorProton.translator import get_translation_engine
 
 import threading
 
@@ -375,12 +375,14 @@ def show_popup(translator, text, x, y, main_window_instance, language_interface,
         try:
             # Lấy model dịch từ translator instance
             model_name = getattr(translator, 'translation_model', 'google')
-            result = translate_with_model(
+            engine = get_translation_engine()
+            translation_result = engine.translate(
                 text,
                 src_lang="auto",
                 dest_lang=dest_lang,
-                model_name=model_name
+                model=model_name
             )
+            result = translation_result.to_dict()  # Convert to old format
             translated = result["text"]
             src_lang = result["src"]
             src_lang_display = lang_display.get(src_lang, src_lang)
@@ -424,7 +426,9 @@ def show_popup(translator, text, x, y, main_window_instance, language_interface,
         try:
             # Lấy model dịch từ translator instance
             model_name = getattr(translator, 'translation_model', 'google')
-            result = translate_with_model(text, src_lang=new_src_lang, dest_lang=dest_lang, model_name=model_name)
+            engine = get_translation_engine()
+            translation_result = engine.translate(text, src_lang=new_src_lang, dest_lang=dest_lang, model=model_name)
+            result = translation_result.to_dict()  # Convert to old format
             translated = result["text"]  # Sửa lại từ result.text thành result["text"]
             
             # Update constant for consistency

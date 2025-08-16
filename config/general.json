@@ -1,20 +1,5 @@
 {
   "interface_language": "en",
-  "start_at_startup": false,
-  "show_homepage_at_startup": true,
-  "always_show_transtale": false,
-  "enable_ctrl_tracking": false,
-  "enable_hotkeys": false,
-  "save_translate_history": true,
-  "auto_save_after": 3000,
-  "icon_size": 60,
-  "icon_dissapear_after": 3,
-  "popup_dissapear_after": 2,
-  "max_length_on_popup": 300,
-  "max_history_items": 100,
-  "hotkey": "ctrl+F+shift",
-  "clipboard_hotkey": "f2+shift",
-  "dest_lang": "vi",
   "font": "JetBrains Mono",
   "default_fonts": [
     "JetBrains Mono",
@@ -25,6 +10,18 @@
     "Verdana",
     "Tahoma"
   ],
+  "start_at_startup": false,
+  "show_homepage_at_startup": true,
+  "always_show_transtale": false,
+  "dest_lang": "en",
+  "translation_model": "google",
+  "translation_models": {
+    "google": "🌐 Google Translator",
+    "bing": "🔍 Bing Translator",
+    "deepl": "🔬 DeepL Translator",
+    "marian": "🤖 Marian MT (Local)",
+    "opus": "📚 OPUS-MT (Local)"
+  },
   "lang_display": {
     "en": "🇺🇸 English",
     "vi": "🇻🇳 Tiếng Việt",
@@ -38,13 +35,16 @@
     "es": "🇪🇸 Español",
     "th": "🇹🇭 ไทย"
   },
-  "translation_model": "google",
-  "translation_models": {
-    "google": "🌐 Google Translator",
-    "bing": "🔍 Bing Translator",
-    "deepl": "🔬 DeepL Translator",
-    "marian": "🤖 Marian MT (Local)",
-    "opus": "📚 OPUS-MT (Local)"
-  },
-  "ctrl_to_exit": false
+  "enable_ctrl_tracking": false,
+  "enable_hotkeys": false,
+  "hotkey": "ctrl+F+shift",
+  "clipboard_hotkey": "f2+shift",
+  "ctrl_to_exit": false,
+  "save_translate_history": true,
+  "max_history_items": 100,
+  "auto_save_after": 3000,
+  "icon_size": 60,
+  "icon_dissapear_after": 3,
+  "popup_dissapear_after": 2,
+  "max_length_on_popup": 300
 }

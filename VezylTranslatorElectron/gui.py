@@ -869,8 +869,9 @@ class MainWindow(ctk.CTkToplevel):
                         selected_model = var.get()
                         if "Marian MT" in selected_model:
                             try:
-                                from VezylTranslatorProton.translate_module import get_marian_supported_languages
-                                supported = get_marian_supported_languages()
+                                from VezylTranslatorProton.translator import get_translation_engine
+                                engine = get_translation_engine()
+                                supported = engine.get_supported_languages("marian")
                                 lang_pairs = list(supported.values())
                                 languages_text = f"🌐 Hỗ trợ: {', '.join(lang_pairs)}"
                                 supported_languages_label.configure(text=languages_text)
@@ -1040,12 +1041,8 @@ class MainWindow(ctk.CTkToplevel):
         import winsound
         winsound.MessageBeep(winsound.MB_ICONASTERISK)
         
-        try:
-            from VezylTranslatorProton.config_module import load_config, save_config, get_default_config
-            config_data = load_config(self.translator.config_file, get_default_config())
-        except Exception:
-            from VezylTranslatorProton.config_module import get_default_config
-            config_data = get_default_config()
+        # Use new config system - update translator instance directly
+        # Configuration will be saved through the translator's save_config method
         
         old_homepage_hotkey = self.translator.hotkey
         old_clipboard_hotkey = self.translator.clipboard_hotkey
@@ -1077,10 +1074,15 @@ class MainWindow(ctk.CTkToplevel):
                 val = entry.var.get()
             else:
                 val = entry.get()
-            config_data[key] = val
+            
+            # Update translator instance attribute directly
+            setattr(self.translator, key, val)
         
-        save_config(self.translator.config_file, config_data)
-        self.translator.load_config()
+        # Save configuration using new config system
+        save_success = self.translator.save_config()
+        
+        if not save_success:
+            print("Failed to save configuration")
         
         # Update system settings
         self.translator.set_startup(self.translator.start_at_startup)

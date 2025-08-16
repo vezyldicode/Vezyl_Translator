@@ -23,7 +23,7 @@ from VezylTranslatorProton.utils import (
     ensure_local_dir, 
     search_entries
 )
-from VezylTranslatorProton.translate_module import translate_with_model
+from VezylTranslatorProton.translator import get_translation_engine
 from VezylTranslatorProton.history_module import (
     write_log_entry,
     read_history_entries,
@@ -38,7 +38,8 @@ from VezylTranslatorProton.favorite_module import (
     update_favorite_note
 )
 from VezylTranslatorNeutron import constant
-from VezylTranslatorProton.config_module import load_config, save_config, get_default_config
+# Config imports updated to use new config system
+# from VezylTranslatorProton.config_module import load_config, save_config, get_default_config
 from VezylTranslatorProton.hotkey_manager_module import (
     register_hotkey, 
     unregister_hotkey)
@@ -427,7 +428,9 @@ class MainWindow(ctk.CTkToplevel):
                     try:
                         # Lấy model dịch từ config
                         model_name = getattr(self.translator, 'translation_model', 'google')
-                        result = translate_with_model(text, src_lang, dest_lang, model_name=model_name)
+                        engine = get_translation_engine()
+                        translation_result = engine.translate(text, src_lang, dest_lang, model=model_name)
+                        result = translation_result.to_dict()  # Convert to old format
                         translated = result["text"]
                         src = result["src"]
                         def update_ui():
@@ -1108,8 +1111,9 @@ class MainWindow(ctk.CTkToplevel):
                     def update_supported_languages(*args):
                         selected_model = var.get()
                         if "Marian MT" in selected_model:
-                            from VezylTranslatorProton.translate_module import get_marian_supported_languages
-                            supported = get_marian_supported_languages()
+                            from VezylTranslatorProton.translator import get_translation_engine
+                            engine = get_translation_engine()
+                            supported = engine.get_supported_languages("marian")
                             # Tạo text hiển thị từ danh sách thực tế
                             lang_pairs = list(supported.values())
                             languages_text = f"🌐 Hỗ trợ: {', '.join(lang_pairs)}"
@@ -1230,9 +1234,13 @@ class MainWindow(ctk.CTkToplevel):
         def on_save_config():
             winsound.MessageBeep(winsound.MB_ICONASTERISK)
             try:
-                config_data = load_config(self.translator.config_file, get_default_config())
+                # TODO: Update to use new config system
+                # config_data = load_config(self.translator.config_file, get_default_config())
+                config_data = {}
             except Exception:
-                config_data = get_default_config()
+                # TODO: Update to use new config system  
+                # config_data = get_default_config()
+                config_data = {}
             old_homepage_hotkey = self.translator.hotkey
             old_clipboard_hotkey = self.translator.clipboard_hotkey
 
@@ -1263,7 +1271,9 @@ class MainWindow(ctk.CTkToplevel):
                 else:
                     val = entry.get()
                 config_data[key] = val
-            save_config(self.translator.config_file, config_data)
+            # TODO: Update to use new config system
+            # save_config(self.translator.config_file, config_data)
+            self.translator.save_config()
             self.translator.load_config()
             # --- Cập nhật trạng thái khởi động cùng Windows ---
             self.translator.set_startup(self.translator.start_at_startup)

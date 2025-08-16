@@ -6,7 +6,7 @@ Handles settings management and configuration logic
 import os
 import winsound
 from VezylTranslatorNeutron import constant
-from VezylTranslatorProton.config_module import load_config, save_config, get_default_config
+from VezylTranslatorProton.config import get_config_manager
 from VezylTranslatorProton.hotkey_manager_module import register_hotkey, unregister_hotkey
 
 
@@ -53,19 +53,26 @@ class SettingsController:
     
     def get_translation_models(self):
         """Get available translation models"""
-        return getattr(self.translator, 'translation_models', {
-            "google": "🌐 Google Translator",
-            "bing": "🔍 Bing Translator", 
-            "deepl": "🔬 DeepL Translator",
-            "marian": "🤖 Marian MT (Local)",
-            "opus": "📚 OPUS-MT (Local)"
-        })
+        try:
+            from VezylTranslatorProton.translator import get_translation_engine
+            engine = get_translation_engine()
+            return engine.get_available_models()
+        except Exception:
+            # Fallback to static list
+            return {
+                "google": "🌐 Google Translator",
+                "bing": "🔍 Bing Translator", 
+                "deepl": "🔬 DeepL Translator",
+                "marian": "🤖 Marian MT (Local)",
+                "opus": "📚 OPUS-MT (Local)"
+            }
     
     def get_marian_supported_languages(self):
         """Get Marian supported languages"""
         try:
-            from VezylTranslatorProton.translate_module import get_marian_supported_languages
-            supported = get_marian_supported_languages()
+            from VezylTranslatorProton.translator import get_translation_engine
+            engine = get_translation_engine()
+            supported = engine.get_supported_languages("marian")
             lang_pairs = list(supported.values())
             return f"🌐 Hỗ trợ: {', '.join(lang_pairs)}"
         except Exception:
@@ -140,13 +147,8 @@ class SettingsController:
         return on_hotkey_click
     
     def save_config_from_entries(self, entries, setup_ctrl_tracking_callback, update_hotkey_system_callback):
-        """Save configuration from UI entries"""
+        """Save configuration from UI entries using new config manager"""
         winsound.MessageBeep(winsound.MB_ICONASTERISK)
-        
-        try:
-            config_data = load_config(self.translator.config_file, get_default_config())
-        except Exception:
-            config_data = get_default_config()
         
         # Store old hotkey values for comparison
         old_homepage_hotkey = self.translator.hotkey
@@ -155,7 +157,7 @@ class SettingsController:
         lang_display = self.translator.lang_display
         translation_models = self.get_translation_models()
         
-        # Process each entry
+        # Process each entry and update translator instance
         for key, (entry, typ) in entries.items():
             if typ is bool:
                 val = entry.var.get()
@@ -175,18 +177,20 @@ class SettingsController:
             else:
                 val = entry.get()
             
-            config_data[key] = val
+            # Update translator instance attribute
+            setattr(self.translator, key, val)
         
-        # Save configuration
-        save_config(self.translator.config_file, config_data)
-        self.translator.load_config()
+        # Save configuration using new config manager
+        save_success = self.translator.save_config()
         
-        # Update system settings
-        self.translator.set_startup(self.translator.start_at_startup)
-        setup_ctrl_tracking_callback()
-        update_hotkey_system_callback(old_homepage_hotkey, old_clipboard_hotkey)
+        if save_success:
+            # Update system settings
+            if hasattr(self.translator, 'set_startup'):
+                self.translator.set_startup(self.translator.start_at_startup)
+            setup_ctrl_tracking_callback()
+            update_hotkey_system_callback(old_homepage_hotkey, old_clipboard_hotkey)
         
-        return True
+        return save_success
     
     def update_hotkey_system(self, old_homepage_hotkey, old_clipboard_hotkey):
         """Update hotkey system based on config changes"""

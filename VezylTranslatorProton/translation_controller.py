@@ -5,7 +5,7 @@ Handles translation logic and auto-save functionality
 
 import threading
 from VezylTranslatorNeutron import constant
-from VezylTranslatorProton.translate_module import translate_with_model
+from VezylTranslatorProton.translator import get_translation_engine
 from VezylTranslatorProton.history_module import write_log_entry
 from VezylTranslatorProton.utils import ensure_local_dir
 
@@ -31,11 +31,13 @@ class TranslationController:
                 return
             
             try:
-                # Perform translation
-                translated = translate_with_model(
+                # Perform translation using new engine
+                engine = get_translation_engine()
+                result = engine.translate(
                     text, src_lang, dest_lang, 
                     self.translator.translation_model
                 )
+                translated = result.to_dict()  # Convert to old format for compatibility
                 
                 if translated and dest_text_widget:
                     # Extract text from translation result
