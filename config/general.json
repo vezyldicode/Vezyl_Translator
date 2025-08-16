@@ -14,7 +14,7 @@
   "max_history_items": 100,
   "hotkey": "ctrl+F+shift",
   "clipboard_hotkey": "f2+shift",
-  "dest_lang": "en",
+  "dest_lang": "vi",
   "font": "JetBrains Mono",
   "default_fonts": [
     "JetBrains Mono",

@@ -151,7 +151,7 @@ def get_webhook_url() -> Optional[str]:
     Returns:
         URL string if found, None otherwise
     """
-    config_path = os.path.join("config", "client.toml")
+    config_path = constant.CLIENT_CONFIG_FILE
     
     try:
         config = toml.load(config_path)

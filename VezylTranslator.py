@@ -128,13 +128,12 @@ class Translator:
     def __init__(self):
         print(f"{constant.SOFTWARE}. version {constant.SOFTWARE_VERSION} - Copyright © 2025 by Vezyl")
         # Load config
-        self.config_file = "config/general.json"
+        self.config_file = constant.DEFAULT_CONFIG_FILE
         self.load_config()
         self.Is_icon_showing = False
         self.clipboard_watcher_enabled = True
-        # Load locale
-        locales_dir = os.path.join("resources", "locales")
-        _.load_locale(self.interface_language, locales_dir)
+        # Load locale (after config is loaded)
+        _.load_locale(self.interface_language)
 
         self.root = ctk.CTk()
         self.root.withdraw()
@@ -215,7 +214,7 @@ class Translator:
         """load file config"""
         default_config = get_default_config()
         config = load_config(self.config_file, default_config)
-        self.interface_language = config.get('interface_language')
+        self.interface_language = config.get('interface_language') or 'vi'  # Ensure not None
         self.start_at_startup = config.get('start_at_startup')
         self.show_homepage_at_startup = config.get('show_homepage_at_startup')
         self.always_show_transtale = config.get('always_show_transtale')
@@ -315,6 +314,12 @@ def safe_show_homepage():
             # Reset shutdown flag if exists
             if hasattr(main_window, '_shutting_down'):
                 main_window._shutting_down = False
+                
+            # Ensure translation executor is available
+            if hasattr(main_window, 'gui_controller'):
+                if not hasattr(main_window.gui_controller, 'translation_executor') or main_window.gui_controller.translation_executor is None:
+                    main_window.gui_controller._ensure_translation_executor()
+                    
             main_window.show_and_fill_homepage()
             return True
         except Exception as e:
@@ -382,7 +387,7 @@ def main():
     try:
         from fast_startup import fast_startup
         fast_startup.optimize_for_exe()
-        print("🚀 Fast startup optimizations applied")
+        print("[FastStartup] Fast startup optimizations applied")
     except ImportError:
         pass  # Continue without fast startup module
     
@@ -391,7 +396,7 @@ def main():
         from VezylTranslatorProton.startup_optimizer import optimize_imports, finish_startup_optimization
         fast_startup_enabled = optimize_imports()
         if fast_startup_enabled:
-            print("🚀 Fast startup mode activated")
+            print("[FastStartup] Fast startup mode activated")
     except ImportError:
         print("Startup optimizer not available")
         fast_startup_enabled = False

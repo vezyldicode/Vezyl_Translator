@@ -34,7 +34,8 @@
       "enable_ctrl_tracking": "Hold ctrl and press close to exit",
       "enable_hotkeys": "Enable hotkeys",
       "hotkey": "Hotkey for open Homepage",
-      "clipboard_hotkey": "Hotkey for clipboard translation"
+      "clipboard_hotkey": "Hotkey for clipboard translation",
+      "save_settings": "Save Settings"
     },
     "history": {
       "title": "History",

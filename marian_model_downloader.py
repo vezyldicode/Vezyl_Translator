@@ -13,6 +13,7 @@ import requests
 import os
 import sys
 from pathlib import Path
+from VezylTranslatorNeutron.constant import RESOURCES_DIR, MARIAN_MODELS_DIR, MARIAN_MODELS_FALLBACK_DIR
 import json
 from datetime import datetime
 import tempfile
@@ -30,9 +31,9 @@ class MarianModelDownloader:
             try:
                 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
                     # PyInstaller bundle
-                    icon_path = Path(sys._MEIPASS) / "resources" / "logo.ico"
+                    icon_path = Path(sys._MEIPASS) / RESOURCES_DIR / "logo.ico"
                 else:
-                    icon_path = Path(__file__).parent / "resources" / "logo.ico"
+                    icon_path = Path(__file__).parent / RESOURCES_DIR / "logo.ico"
                 
                 if icon_path.exists():
                     self.root.iconbitmap(str(icon_path))
@@ -64,7 +65,7 @@ class MarianModelDownloader:
             
         # Try to use script directory first, fallback to temp if needed
         try:
-            self.models_dir = base_dir / "resources" / "marian_models"
+            self.models_dir = base_dir / MARIAN_MODELS_DIR
             self.models_dir.mkdir(parents=True, exist_ok=True)
             # Test write permission
             test_file = self.models_dir / ".test_write"
@@ -74,7 +75,7 @@ class MarianModelDownloader:
         except Exception as e:
             self.log_to_console(f"Cannot use primary directory ({e}), using fallback...")
             # Fallback to user temp directory
-            self.models_dir = Path(tempfile.gettempdir()) / "VezylTranslator" / "marian_models"
+            self.models_dir = Path(tempfile.gettempdir()) / MARIAN_MODELS_FALLBACK_DIR
             self.models_dir.mkdir(parents=True, exist_ok=True)
             self.log_to_console(f"Using fallback directory: {self.models_dir}")
         
@@ -532,9 +533,9 @@ if __name__ == "__main__":
         safe_print(f"Current directory: {current_dir}")
         
         # Check for resources directory - but don't prompt in exe mode
-        resources_dir = current_dir / "resources"
+        resources_dir = current_dir / RESOURCES_DIR
         if not resources_dir.exists():
-            safe_print("Warning: 'resources' directory not found in current directory.")
+            safe_print(f"Warning: '{RESOURCES_DIR}' directory not found in current directory.")
             safe_print("This tool works best when run from the VezylTranslator project root.")
             
             # Only prompt if running as script AND in interactive mode

@@ -33,7 +33,8 @@
       "always_show_translate": "Luôn hiển thị bong bóng dịch",
       "enable_ctrl_tracking": "Giữ ctrl và ấn tắt để thoát",
       "hotkey": "Phím tắt mở trang chủ",
-      "clipboard_hotkey": "Phím tắt dịch từ clipboard"
+      "clipboard_hotkey": "Phím tắt dịch từ clipboard",
+      "save_settings": "Lưu cài đặt"
     },
     "history":{
       "title": "Lịch sử",
