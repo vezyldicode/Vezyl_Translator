@@ -108,7 +108,7 @@ class TranslationController:
                 dest_lang_display = dest_lang_combo.get()
                 
                 # Don't reverse if source is auto-detect
-                if src_lang_display == self._._("home")["auto_detect"]:
+                if src_lang_display == self._("home")["auto_detect"]:
                     return
                 
                 # Swap combobox values

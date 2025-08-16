@@ -23,31 +23,31 @@ class SettingsController:
         lang_codes = list(lang_display.keys())
         
         return [
-            (self._._("settings")["general"]["title"], [
-                ("start_at_startup", self._._("settings")["general"]["start_at_startup"], bool),
-                ("show_homepage_at_startup", self._._("settings")["general"]["show_homepage_at_startup"], bool),
-                ("always_show_transtale", self._._("settings")["general"]["always_show_translate"], bool),
-                ("enable_ctrl_tracking", self._._("settings")["general"]["enable_ctrl_tracking"], bool),
-                ("enable_hotkeys", self._._("settings")["general"]["enable_hotkeys"], bool),
-                ("hotkey", self._._("settings")["general"]["hotkey"], "hotkey"),
-                ("clipboard_hotkey", self._._("settings")["general"]["clipboard_hotkey"], "hotkey"),
+            (self._("settings")["general"]["title"], [
+                ("start_at_startup", self._("settings")["general"]["start_at_startup"], bool),
+                ("show_homepage_at_startup", self._("settings")["general"]["show_homepage_at_startup"], bool),
+                ("always_show_transtale", self._("settings")["general"]["always_show_translate"], bool),
+                ("enable_ctrl_tracking", self._("settings")["general"]["enable_ctrl_tracking"], bool),
+                ("enable_hotkeys", self._("settings")["general"]["enable_hotkeys"], bool),
+                ("hotkey", self._("settings")["general"]["hotkey"], "hotkey"),
+                ("clipboard_hotkey", self._("settings")["general"]["clipboard_hotkey"], "hotkey"),
             ]),
-            (self._._("settings")["history"]["title"], [
-                ("save_translate_history", self._._("settings")["history"]["save_translate_history"], bool),
-                ("max_history_items", self._._("settings")["history"]["max_history_items"], int),
+            (self._("settings")["history"]["title"], [
+                ("save_translate_history", self._("settings")["history"]["save_translate_history"], bool),
+                ("max_history_items", self._("settings")["history"]["max_history_items"], int),
             ]),
-            (self._._("settings")["popup_and_icon"]["title"], [
-                ("icon_size", self._._("settings")["popup_and_icon"]["icon_size"], int),
-                ("icon_dissapear_after", self._._("settings")["popup_and_icon"]["icon_dissapear_after"], int),
-                ("popup_dissapear_after", self._._("settings")["popup_and_icon"]["popup_dissapear_after"], int),
-                ("max_length_on_popup", self._._("settings")["popup_and_icon"]["max_length_on_popup"], int),
+            (self._("settings")["popup_and_icon"]["title"], [
+                ("icon_size", self._("settings")["popup_and_icon"]["icon_size"], int),
+                ("icon_dissapear_after", self._("settings")["popup_and_icon"]["icon_dissapear_after"], int),
+                ("popup_dissapear_after", self._("settings")["popup_and_icon"]["popup_dissapear_after"], int),
+                ("max_length_on_popup", self._("settings")["popup_and_icon"]["max_length_on_popup"], int),
             ]),
-            (self._._("settings")["language"]["title"], [
-                ("dest_lang", self._._("settings")["language"]["dest_lang"], "combo"),
-                ("font", self._._("settings")["language"]["font"], str),
+            (self._("settings")["language"]["title"], [
+                ("dest_lang", self._("settings")["language"]["dest_lang"], "combo"),
+                ("font", self._("settings")["language"]["font"], str),
             ]),
-            (self._._("settings")["translation"]["title"], [
-                ("translation_model", self._._("settings")["translation"]["translation_model"], "translation_model"),
+            (self._("settings")["translation"]["title"], [
+                ("translation_model", self._("settings")["translation"]["translation_model"], "translation_model"),
             ])
         ]
     

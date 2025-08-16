@@ -16,7 +16,8 @@
   "dest_lang": "vi",
   "translation_model": "google",
   "translation_models": {
-    "google": "🌐 Google Translator"
+    "google": "🌐 Google Translator",
+    "marian": "🤖 Marian MT (Offline)"
   },
   "lang_display": {
     "en": "🇺🇸 English",

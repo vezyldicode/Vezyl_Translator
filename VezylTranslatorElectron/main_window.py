@@ -163,11 +163,11 @@ class MainWindow(ctk.CTkToplevel):
         src_lang_var = tk.StringVar(value="auto")
         src_lang_combo = self.ui_components.create_language_combo(
             frame, 
-            [self._._("home")["auto_detect"]] + [lang_display[code] for code in lang_codes],
+            [self._("home")["auto_detect"]] + [lang_display[code] for code in lang_codes],
             src_lang_var
         )
         src_lang_combo.grid(row=0, column=0, sticky="w", pady=(0, 5))
-        src_lang_combo.set(self._._("home")["auto_detect"])
+        src_lang_combo.set(self._("home")["auto_detect"])
         
         # Source text frame with copy button
         src_text_frame, src_text, copy_src_btn = self.ui_components.create_text_frame_with_copy_button(
@@ -262,7 +262,7 @@ class MainWindow(ctk.CTkToplevel):
             
             # Get language codes
             src_lang = self.translation_controller.get_language_from_display(
-                src_lang_var.get(), lang_display, self._._("home")["auto_detect"]
+                src_lang_var.get(), lang_display, self._("home")["auto_detect"]
             )
             dest_lang = self.translation_controller.get_language_from_display(
                 dest_lang_var.get(), lang_display, ""
@@ -303,7 +303,7 @@ class MainWindow(ctk.CTkToplevel):
         title_frame.pack(side="top", fill="x", padx=60, pady=(20, 0))
 
         title = ctk.CTkLabel(title_frame, 
-                             text=self._._("history")["title"], 
+                             text=self._("history")["title"], 
                              font=(self.translator.font, 20, "bold"), text_color="#00ff99")
         title.pack(side="left", anchor="w")
 
@@ -355,7 +355,7 @@ class MainWindow(ctk.CTkToplevel):
         title_frame.pack(side="top", fill="x", padx=60, pady=(20, 0))
 
         title = ctk.CTkLabel(title_frame, 
-                             text=self._._("favorite")["title"], 
+                             text=self._("favorite")["title"], 
                              font=(self.translator.font, 20, "bold"), 
                              text_color="#00ff99")
         title.pack(side="left", anchor="w")
@@ -409,7 +409,7 @@ class MainWindow(ctk.CTkToplevel):
         
         if not entries:
             empty_label = self.ui_components.create_content_label(
-                parent, self._._("history")["empty"]
+                parent, self._("history")["empty"]
             )
             empty_label.grid(row=1, column=0, columnspan=2, pady=20)
             return
@@ -486,7 +486,7 @@ class MainWindow(ctk.CTkToplevel):
         
         if not entries:
             empty_label = self.ui_components.create_content_label(
-                parent, self._._("favorite")["empty"]
+                parent, self._("favorite")["empty"]
             )
             empty_label.grid(row=0, column=0, columnspan=2, pady=20)
             return
@@ -626,32 +626,32 @@ class MainWindow(ctk.CTkToplevel):
         
         # Config groups
         config_groups = [
-            (self._._("settings")["general"]["title"], [
-                ("start_at_startup", self._._("settings")["general"]["start_at_startup"], bool),
-                ("show_homepage_at_startup", self._._("settings")["general"]["show_homepage_at_startup"], bool),
-                ("always_show_transtale", self._._("settings")["general"]["always_show_translate"], bool),
-                ("enable_ctrl_tracking", self._._("settings")["general"]["enable_ctrl_tracking"], bool),
-                ("enable_hotkeys", self._._("settings")["general"]["enable_hotkeys"], bool),
-                ("hotkey", self._._("settings")["general"]["hotkey"], "hotkey"),
-                ("clipboard_hotkey", self._._("settings")["general"]["clipboard_hotkey"], "hotkey"),
+            (self._("settings")["general"]["title"], [
+                ("start_at_startup", self._("settings")["general"]["start_at_startup"], bool),
+                ("show_homepage_at_startup", self._("settings")["general"]["show_homepage_at_startup"], bool),
+                ("always_show_transtale", self._("settings")["general"]["always_show_translate"], bool),
+                ("enable_ctrl_tracking", self._("settings")["general"]["enable_ctrl_tracking"], bool),
+                ("enable_hotkeys", self._("settings")["general"]["enable_hotkeys"], bool),
+                ("hotkey", self._("settings")["general"]["hotkey"], "hotkey"),
+                ("clipboard_hotkey", self._("settings")["general"]["clipboard_hotkey"], "hotkey"),
             ]),
-            (self._._("settings")["history"]["title"], [
-                ("save_translate_history", self._._("settings")["history"]["save_translate_history"], bool),
-                ("max_history_items", self._._("settings")["history"]["max_history_items"], int),
+            (self._("settings")["history"]["title"], [
+                ("save_translate_history", self._("settings")["history"]["save_translate_history"], bool),
+                ("max_history_items", self._("settings")["history"]["max_history_items"], int),
             ]),
-            (self._._("settings")["popup_and_icon"]["title"], [
-                ("icon_size", self._._("settings")["popup_and_icon"]["icon_size"], int),
-                ("icon_dissapear_after", self._._("settings")["popup_and_icon"]["icon_dissapear_after"], int),
-                ("popup_dissapear_after", self._._("settings")["popup_and_icon"]["popup_dissapear_after"], int),
-                ("max_length_on_popup", self._._("settings")["popup_and_icon"]["max_length_on_popup"], int),
+            (self._("settings")["popup_and_icon"]["title"], [
+                ("icon_size", self._("settings")["popup_and_icon"]["icon_size"], int),
+                ("icon_dissapear_after", self._("settings")["popup_and_icon"]["icon_dissapear_after"], int),
+                ("popup_dissapear_after", self._("settings")["popup_and_icon"]["popup_dissapear_after"], int),
+                ("max_length_on_popup", self._("settings")["popup_and_icon"]["max_length_on_popup"], int),
             ]),
-            (self._._("settings")["language"]["title"], [
-                ("interface_language", self._._("settings")["language"]["interface_language"], "combo"),
-                ("dest_lang", self._._("settings")["language"]["dest_lang"], "combo"),
-                ("font", self._._("settings")["language"]["font"], "combo"),
+            (self._("settings")["language"]["title"], [
+                ("interface_language", self._("settings")["language"]["interface_language"], "combo"),
+                ("dest_lang", self._("settings")["language"]["dest_lang"], "combo"),
+                ("font", self._("settings")["language"]["font"], "combo"),
             ]),
-            (self._._("settings")["translation"]["title"], [
-                ("translation_model", self._._("settings")["translation"]["translation_model"], "translation_model"),
+            (self._("settings")["translation"]["title"], [
+                ("translation_model", self._("settings")["translation"]["translation_model"], "translation_model"),
             ]),
         ]
 
@@ -718,7 +718,7 @@ class MainWindow(ctk.CTkToplevel):
         # Save button
         save_btn = ctk.CTkButton(
             footer,
-            text=self._._("settings")["general"]["save_settings"],
+            text=self._("settings")["general"]["save_settings"],
             command=lambda: self._save_settings(entries),
             font=(self.translator.font, 13, "bold"),
             height=40,
@@ -1093,7 +1093,7 @@ class MainWindow(ctk.CTkToplevel):
             
             if src_lang_combo:
                 if src_lang == "auto":
-                    src_lang_combo.set(self._._("home")["auto_detect"])
+                    src_lang_combo.set(self._("home")["auto_detect"])
                 elif src_lang in lang_display:
                     src_lang_combo.set(lang_display[src_lang])
             

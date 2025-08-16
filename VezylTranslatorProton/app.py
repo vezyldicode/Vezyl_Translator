@@ -12,12 +12,49 @@ import subprocess
 import time
 import threading
 import winreg
+import json
 from datetime import datetime
 from typing import Optional, Callable, Dict, Any
 
 import customtkinter as ctk
 from VezylTranslatorNeutron import constant
-import VezylTranslatorProton.locale_module as _
+
+
+# === Locale Management (merged from locale_module.py) ===
+_locale_dict = {}
+
+def load_locale(locale_code, locales_dir=None):
+    """Load locale dictionary from JSON file"""
+    global _locale_dict
+    if locales_dir is None:
+        locales_dir = constant.LOCALES_DIR
+    
+    # Handle None or empty locale_code
+    if not locale_code:
+        locale_code = "en"  # Default to English
+    
+    path = os.path.join(locales_dir, f"{locale_code}.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            _locale_dict = json.load(f)
+    except Exception as e:
+        print(f"Cannot load locale {locale_code}: {e}")
+        # Try to fallback to English if the requested locale fails
+        if locale_code != "en":
+            try:
+                fallback_path = os.path.join(locales_dir, "en.json")
+                with open(fallback_path, "r", encoding="utf-8") as f:
+                    _locale_dict = json.load(f)
+                print(f"Loaded fallback English locale")
+            except Exception as fallback_e:
+                print(f"Cannot load fallback locale: {fallback_e}")
+                _locale_dict = {}
+        else:
+            _locale_dict = {}
+
+def _(key):
+    """Get localized string by key"""
+    return _locale_dict.get(key, key)
 
 
 class CrashHandler:
@@ -175,7 +212,7 @@ class VezylTranslatorApp:
         StartupManager.set_startup(self.start_at_startup)
         
         # Load locale after config is loaded
-        _.load_locale(self.interface_language)
+        load_locale(self.interface_language)
     
     def _load_config(self):
         """Load configuration from file using new config manager"""
@@ -448,7 +485,7 @@ class VezylTranslatorApp:
             icon.stop()
             os._exit(0)
         
-        menu_texts = _._("menu_tray")
+        menu_texts = _("menu_tray")
         run_tray_icon_in_thread(
             constant.SOFTWARE,
             get_windows_theme,

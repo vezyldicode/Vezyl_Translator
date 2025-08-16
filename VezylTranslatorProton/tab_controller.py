@@ -65,8 +65,8 @@ class TabController:
         """Delete all history entries with confirmation"""
         show_confirm_popup(
             parent=parent,
-            title=self._._("confirm_popup")["title"],
-            message=self._._("history")["menu"]["delete_confirm"],
+            title=self._("confirm_popup")["title"],
+            message=self._("history")["menu"]["delete_confirm"],
             on_confirm=lambda: (
                 ensure_local_dir(constant.LOCAL_DIR),
                 delete_all_history_entries(constant.TRANSLATE_LOG_FILE),
@@ -95,8 +95,8 @@ class TabController:
         """Delete all favorite entries with confirmation"""
         show_confirm_popup(
             parent=parent,
-            title=self._._("confirm_popup")["title"],
-            message=self._._("favorite")["menu"]["delete_confirm"],
+            title=self._("confirm_popup")["title"],
+            message=self._("favorite")["menu"]["delete_confirm"],
             on_confirm=lambda: (
                 ensure_local_dir(constant.LOCAL_DIR),
                 delete_all_favorite_entries(constant.FAVORITE_LOG_FILE),
@@ -156,7 +156,7 @@ class TabController:
             
             # Add to favorites option
             menu.add_command(
-                label=self._._("history")["menu"]["add_to_favorites"], 
+                label=self._("history")["menu"]["add_to_favorites"], 
                 command=lambda: (
                     self.add_to_favorites(content, item.get("translated_text", ""), src_lang, dest_lang),
                     print("Added to favorites")
@@ -165,11 +165,11 @@ class TabController:
             
             # Copy options
             menu.add_command(
-                label=self._._("history")["menu"]["copy_original"], 
+                label=self._("history")["menu"]["copy_original"], 
                 command=lambda: self.copy_text_to_clipboard(content)
             )
             menu.add_command(
-                label=self._._("history")["menu"]["copy_translated"], 
+                label=self._("history")["menu"]["copy_translated"], 
                 command=lambda: self.copy_text_to_clipboard(item.get("translated_text", ""))
             )
             
@@ -177,11 +177,11 @@ class TabController:
             
             # Delete options
             menu.add_command(
-                label=self._._("history")["menu"]["delete"], 
+                label=self._("history")["menu"]["delete"], 
                 command=lambda: self.delete_history_entry_by_data(time_str, content, refresh_callback)
             )
             menu.add_command(
-                label=self._._("history")["menu"]["delete_all"], 
+                label=self._("history")["menu"]["delete_all"], 
                 command=lambda: self.delete_all_history_entries_with_confirm(parent, refresh_callback)
             )
             
@@ -196,7 +196,7 @@ class TabController:
             
             # Copy options
             menu.add_command(
-                label=self._._("favorite")["menu"]["copy_original"], 
+                label=self._("favorite")["menu"]["copy_original"], 
                 command=lambda: self.copy_text_to_clipboard(original_text)
             )
             
@@ -204,11 +204,11 @@ class TabController:
             
             # Delete options
             menu.add_command(
-                label=self._._("favorite")["menu"]["delete"], 
+                label=self._("favorite")["menu"]["delete"], 
                 command=lambda: self.delete_favorite_entry_by_data(time_str, original_text, refresh_callback)
             )
             menu.add_command(
-                label=self._._("favorite")["menu"]["delete_all"], 
+                label=self._("favorite")["menu"]["delete_all"], 
                 command=lambda: self.delete_all_favorite_entries_with_confirm(parent, refresh_callback)
             )
             
