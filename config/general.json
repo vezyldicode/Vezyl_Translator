@@ -33,7 +33,7 @@
     "th": "🇹🇭 ไทย"
   },
   "enable_ctrl_tracking": false,
-  "enable_hotkeys": false,
+  "enable_hotkeys": true,
   "hotkey": "ctrl+F+shift",
   "clipboard_hotkey": "f2+shift",
   "ctrl_to_exit": false,

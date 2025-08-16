@@ -11,8 +11,7 @@ import customtkinter as ctk
 from VezylTranslatorNeutron import constant
 
 # Import backend controllers
-from VezylTranslatorProton.translation_controller import TranslationController
-from VezylTranslatorProton.tab_controller import TabController
+# (Controllers have been merged into this file)
 
 # Import consolidated UI modules
 from VezylTranslatorElectron.events import UIEvents
@@ -411,7 +410,8 @@ class SettingsController:
         if save_success:
             # Update system settings
             if hasattr(self.translator, 'set_startup'):
-                self.translator.set_startup(self.translator.start_at_startup)
+                from VezylTranslatorProton.app import StartupManager
+                StartupManager.set_startup(self.translator.start_at_startup)
             setup_ctrl_tracking_callback()
             update_hotkey_system_callback(old_homepage_hotkey, old_clipboard_hotkey)
         
@@ -474,6 +474,485 @@ class SettingsController:
         """Cleanup settings controller resources"""
         # Clear callback reference
         self.show_homepage_callback = None
+
+
+# === Tab Controller (merged from VezylTranslatorProton/tab_controller.py) ===
+class TabController:
+    """Tab Controller - Handles logic for different tabs (History, Favorites, etc.)"""
+    
+    def __init__(self, translator, language_interface, theme_interface, _):
+        self.translator = translator
+        self.language_interface = language_interface
+        self.theme_interface = theme_interface
+        self._ = _
+    
+    def get_history_data(self, search_keyword="", max_items=30):
+        """Get filtered and limited history data"""
+        from VezylTranslatorElectron.helpers import search_entries
+        from VezylTranslatorProton.storage import read_history_entries
+        
+        log_file = constant.TRANSLATE_LOG_FILE
+        history = read_history_entries(log_file, self.language_interface, self.theme_interface)
+        
+        if search_keyword:
+            filtered = search_entries(history, search_keyword, ["last_translated_text", "translated_text"])
+        else:
+            filtered = history
+        
+        # Limit items for performance
+        return list(reversed(filtered[-max_items:]))
+    
+    def get_favorite_data(self, search_keyword="", max_items=30):
+        """Get filtered and limited favorite data"""
+        from VezylTranslatorElectron.helpers import search_entries
+        from VezylTranslatorProton.storage import read_favorite_entries
+        
+        log_file = constant.FAVORITE_LOG_FILE
+        favorites = read_favorite_entries(log_file, self.language_interface, self.theme_interface)
+        
+        if search_keyword:
+            filtered = search_entries(favorites, search_keyword, ["original_text", "translated_text", "note"])
+        else:
+            filtered = favorites
+        
+        # Limit items for performance
+        return list(reversed(filtered[-max_items:]))
+    
+    def delete_history_entry_by_data(self, time_str, last_translated_text, refresh_callback):
+        """Delete history entry and refresh UI"""
+        try:
+            from VezylTranslatorProton.storage import delete_history_entry
+            delete_history_entry(
+                constant.TRANSLATE_LOG_FILE,
+                self.language_interface,
+                self.theme_interface,
+                time_str,
+                last_translated_text
+            )
+            refresh_callback()
+        except Exception as e:
+            print(f"Error deleting history entry: {e}")
+    
+    def delete_all_history_entries_with_confirm(self, parent, refresh_callback):
+        """Delete all history entries with confirmation"""
+        from VezylTranslatorElectron.helpers import ensure_local_dir, show_confirm_popup
+        from VezylTranslatorProton.storage import delete_all_history_entries
+        
+        show_confirm_popup(
+            parent=parent,
+            title=self._("confirm_popup")["title"],
+            message=self._("history")["menu"]["delete_confirm"],
+            on_confirm=lambda: (
+                ensure_local_dir(constant.LOCAL_DIR),
+                delete_all_history_entries(constant.TRANSLATE_LOG_FILE),
+                refresh_callback()
+            ),
+            width=420,
+            height=180,
+            _=self._
+        )
+    
+    def delete_favorite_entry_by_data(self, time_str, original_text, refresh_callback):
+        """Delete favorite entry and refresh UI"""
+        try:
+            from VezylTranslatorProton.storage import delete_favorite_entry
+            delete_favorite_entry(
+                constant.FAVORITE_LOG_FILE, 
+                self.language_interface, 
+                self.theme_interface, 
+                time_str, 
+                original_text
+            )
+            refresh_callback()
+        except Exception as e:
+            print(f"Error deleting favorite entry: {e}")
+    
+    def delete_all_favorite_entries_with_confirm(self, parent, refresh_callback):
+        """Delete all favorite entries with confirmation"""
+        from VezylTranslatorElectron.helpers import ensure_local_dir, show_confirm_popup
+        from VezylTranslatorProton.storage import delete_all_favorite_entries
+        
+        show_confirm_popup(
+            parent=parent,
+            title=self._("confirm_popup")["title"],
+            message=self._("favorite")["menu"]["delete_confirm"],
+            on_confirm=lambda: (
+                ensure_local_dir(constant.LOCAL_DIR),
+                delete_all_favorite_entries(constant.FAVORITE_LOG_FILE),
+                refresh_callback()
+            ),
+            width=420,
+            height=180,
+            _=self._
+        )
+    
+    def update_favorite_note_by_data(self, entry_time, new_note, refresh_callback):
+        """Update favorite note and refresh UI"""
+        try:
+            from VezylTranslatorProton.storage import update_favorite_note
+            update_favorite_note(
+                constant.FAVORITE_LOG_FILE, 
+                self.language_interface, 
+                self.theme_interface, 
+                entry_time, 
+                new_note
+            )
+            refresh_callback()
+        except Exception as e:
+            print(f"Error updating favorite note: {e}")
+    
+    def add_to_favorites(self, original_text, translated_text, src_lang, dest_lang, note=""):
+        """Add entry to favorites"""
+        try:
+            from VezylTranslatorElectron.helpers import ensure_local_dir
+            from VezylTranslatorProton.storage import write_favorite_entry
+            
+            ensure_local_dir(constant.LOCAL_DIR)
+            write_favorite_entry(
+                constant.FAVORITE_LOG_FILE,
+                self.language_interface,
+                self.theme_interface,
+                original_text,
+                translated_text,
+                src_lang,
+                dest_lang,
+                note
+            )
+            return True
+        except Exception as e:
+            print(f"Error adding to favorites: {e}")
+            return False
+    
+    def copy_text_to_clipboard(self, text):
+        """Copy text to clipboard"""
+        try:
+            from VezylTranslatorNeutron.clipboard_service import set_clipboard_text
+            set_clipboard_text(text)
+            return True
+        except Exception as e:
+            print(f"Error copying to clipboard: {e}")
+            return False
+    
+    def create_history_context_menu_handler(self, parent, time_str, content, src_lang, dest_lang, item, refresh_callback, open_in_homepage_callback):
+        """Create context menu handler for history entries"""
+        def show_context_menu(event):
+            menu = tk.Menu(parent, tearoff=0)
+            
+            # Add to favorites option
+            menu.add_command(
+                label=self._("history")["menu"]["add_to_favorite"], 
+                command=lambda: (
+                    self.add_to_favorites(content, item.get("translated_text", ""), src_lang, dest_lang),
+                    print("Added to favorites")
+                )
+            )
+            
+            # Copy options
+            menu.add_command(
+                label="Copy original text", 
+                command=lambda: self.copy_text_to_clipboard(content)
+            )
+            menu.add_command(
+                label="Copy translated text", 
+                command=lambda: self.copy_text_to_clipboard(item.get("translated_text", ""))
+            )
+            
+            menu.add_separator()
+            
+            # Delete options
+            menu.add_command(
+                label=self._("history")["menu"]["delete"], 
+                command=lambda: self.delete_history_entry_by_data(time_str, content, refresh_callback)
+            )
+            menu.add_command(
+                label=self._("history")["menu"]["delete_all"], 
+                command=lambda: self.delete_all_history_entries_with_confirm(parent, refresh_callback)
+            )
+            
+            menu.tk_popup(event.x_root, event.y_root)
+        
+        return show_context_menu
+    
+    def create_favorite_context_menu_handler(self, parent, time_str, original_text, refresh_callback):
+        """Create context menu handler for favorite entries"""
+        def show_context_menu(event):
+            menu = tk.Menu(parent, tearoff=0)
+            
+            # Copy options
+            menu.add_command(
+                label="Copy original text", 
+                command=lambda: self.copy_text_to_clipboard(original_text)
+            )
+            
+            menu.add_separator()
+            
+            # Delete options
+            menu.add_command(
+                label=self._("favorite")["menu"]["delete"], 
+                command=lambda: self.delete_favorite_entry_by_data(time_str, original_text, refresh_callback)
+            )
+            menu.add_command(
+                label=self._("favorite")["menu"]["delete_all"], 
+                command=lambda: self.delete_all_favorite_entries_with_confirm(parent, refresh_callback)
+            )
+            
+            menu.tk_popup(event.x_root, event.y_root)
+        
+        return show_context_menu
+    
+    def create_double_click_handler(self, src_lang, dest_lang, content, open_in_homepage_callback):
+        """Create double-click handler for entries"""
+        def on_double_click(event):
+            open_in_homepage_callback(src_lang, dest_lang, content)
+        
+        return on_double_click
+    
+    def create_hover_effect_handlers(self, frame, normal_color="#23272f", hover_color="#181a20"):
+        """Create hover effect handlers for frames"""
+        def on_enter(event):
+            frame.configure(fg_color=hover_color)
+        
+        def on_leave(event):
+            frame.configure(fg_color=normal_color)
+        
+        return on_enter, on_leave
+    
+    def group_entries_by_date(self, entries):
+        """Group entries by date for display"""
+        grouped = []
+        last_date = None
+        
+        for item in entries:
+            time_str = item.get("time", "")
+            date_str = time_str.split(" ")[0] if time_str else ""
+            
+            show_date = False
+            if date_str != last_date:
+                show_date = True
+                last_date = date_str
+            
+            grouped.append({
+                'item': item,
+                'date_str': date_str,
+                'show_date': show_date
+            })
+        
+        return grouped
+    
+    def cleanup(self):
+        """Cleanup tab controller resources"""
+        # Clear any cached data or references
+        pass
+
+
+# === Translation Controller (merged from VezylTranslatorProton/translation_controller.py) ===
+class TranslationController:
+    """Translation Controller - Handles translation logic and auto-save functionality"""
+    
+    def __init__(self, translator, language_interface, theme_interface, _):
+        self.translator = translator
+        self.language_interface = language_interface
+        self.theme_interface = theme_interface
+        self._ = _
+        
+        # Auto-save state management
+        self.auto_save_state = {"saved": False, "timer_id": None, "last_content": ""}
+    
+    def create_translation_function(self, text, src_lang, dest_lang, dest_text_widget, 
+                                   src_lang_combo=None, lang_display=None, write_history=True):
+        """Create a translation function for async execution"""
+        def do_translate():
+            if not text.strip():
+                # Clear destination if source is empty
+                if dest_text_widget:
+                    dest_text_widget.after(0, lambda: self._update_dest_text(dest_text_widget, ""))
+                return
+            
+            try:
+                # Perform translation using new engine
+                from VezylTranslatorProton.translator import get_translation_engine
+                engine = get_translation_engine()
+                result = engine.translate(
+                    text, src_lang, dest_lang, 
+                    self.translator.translation_model
+                )
+                translated = result.to_dict()  # Convert to old format for compatibility
+                
+                if translated and dest_text_widget:
+                    # Extract text from translation result
+                    translated_text = translated.get("text", "") if isinstance(translated, dict) else str(translated)
+                    detected_src = translated.get("src", src_lang) if isinstance(translated, dict) else src_lang
+                    
+                    # Update source language combo if auto-detect was used
+                    if src_lang == "auto" and src_lang_combo and lang_display and detected_src != "auto":
+                        detected_display = lang_display.get(detected_src, detected_src)
+                        src_lang_combo.after(0, lambda: src_lang_combo.set(detected_display))
+                    
+                    # Update UI in main thread
+                    dest_text_widget.after(0, lambda: self._update_dest_text(dest_text_widget, translated_text))
+                    
+                    # Write to history if enabled
+                    if write_history and getattr(self.translator, 'save_translate_history', True):
+                        try:
+                            from VezylTranslatorElectron.helpers import ensure_local_dir
+                            from VezylTranslatorProton.storage import write_log_entry
+                            
+                            ensure_local_dir(constant.LOCAL_DIR)
+                            # Update constant.last_translated_text for consistency
+                            constant.last_translated_text = translated_text
+                            write_log_entry(
+                                translated_text,  # last_translated_text
+                                detected_src,     # src_lang  
+                                dest_lang,        # dest_lang
+                                "homepage",       # source
+                                constant.TRANSLATE_LOG_FILE,  # log_file
+                                self.language_interface,      # language_interface
+                                self.theme_interface           # theme_interface
+                            )
+                        except Exception as e:
+                            print(f"Error writing history: {e}")
+                
+            except Exception as e:
+                print(f"Translation error: {e}")
+                if dest_text_widget:
+                    error_msg = f"Lỗi dịch: {str(e)}"  # Capture error message immediately
+                    dest_text_widget.after(0, lambda msg=error_msg: self._update_dest_text(dest_text_widget, msg))
+        
+        return do_translate
+    
+    def _update_dest_text(self, dest_text_widget, text):
+        """Update destination text widget safely"""
+        try:
+            if dest_text_widget.winfo_exists():
+                dest_text_widget.configure(state="normal")
+                dest_text_widget.delete("1.0", "end")
+                dest_text_widget.insert("1.0", text)
+                dest_text_widget.configure(state="disabled")
+        except Exception as e:
+            print(f"Error updating destination text: {e}")
+    
+    def create_reverse_translation_function(self, src_text_widget, dest_text_widget, 
+                                          src_lang_combo, dest_lang_combo, lang_display):
+        """Create reverse translation function"""
+        def reverse_translate():
+            try:
+                # Get current values
+                src_text = src_text_widget.get("1.0", "end").strip()
+                dest_text_widget.configure(state="normal")
+                dest_text = dest_text_widget.get("1.0", "end").strip()
+                dest_text_widget.configure(state="disabled")
+                
+                if not dest_text:
+                    return
+                
+                # Swap languages
+                src_lang_display = src_lang_combo.get()
+                dest_lang_display = dest_lang_combo.get()
+                
+                # Don't reverse if source is auto-detect
+                if src_lang_display == self._("home")["auto_detect"]:
+                    return
+                
+                # Swap combobox values
+                src_lang_combo.set(dest_lang_display)
+                dest_lang_combo.set(src_lang_display)
+                
+                # Swap text content
+                src_text_widget.delete("1.0", "end")
+                src_text_widget.insert("1.0", dest_text)
+                
+                # Trigger translation
+                src_text_widget.edit_modified(True)
+                src_text_widget.event_generate("<<Modified>>")
+                
+            except Exception as e:
+                print(f"Error in reverse translation: {e}")
+        
+        return reverse_translate
+    
+    def setup_auto_save(self, src_text_widget):
+        """Setup auto-save functionality for source text"""
+        def save_last_translated_text():
+            text = src_text_widget.get("1.0", "end").strip()
+            if text:
+                constant.last_translated_text = text
+                self.auto_save_state["saved"] = True
+        
+        def start_auto_save_timer():
+            if self.auto_save_state["timer_id"]:
+                src_text_widget.after_cancel(self.auto_save_state["timer_id"])
+            self.auto_save_state["timer_id"] = src_text_widget.after(
+                self.translator.auto_save_after, save_last_translated_text
+            )
+        
+        def reset_auto_save():
+            self.auto_save_state["saved"] = False
+            self.auto_save_state["last_content"] = src_text_widget.get("1.0", "end").strip()
+            start_auto_save_timer()
+        
+        def on_src_text_key(event):
+            current = src_text_widget.get("1.0", "end").strip()
+            if not self.auto_save_state["saved"]:
+                reset_auto_save()
+            elif current != self.auto_save_state["last_content"]:
+                reset_auto_save()
+            
+            # Save immediately on Enter
+            if event.keysym == "Return" and not self.auto_save_state["saved"]:
+                save_last_translated_text()
+        
+        # Bind events
+        src_text_widget.bind("<KeyRelease>", on_src_text_key)
+        
+        # Initialize auto-save state
+        reset_auto_save()
+        
+        return {
+            'save_function': save_last_translated_text,
+            'reset_function': reset_auto_save,
+            'on_key_function': on_src_text_key
+        }
+    
+    def create_debounced_text_change_handler(self, src_text_widget, translation_callback, delay=300):
+        """Create debounced text change handler"""
+        def debounce_text_change(*args):
+            if hasattr(debounce_text_change, "after_id") and debounce_text_change.after_id:
+                src_text_widget.after_cancel(debounce_text_change.after_id)
+            debounce_text_change.after_id = src_text_widget.after(delay, translation_callback)
+        
+        debounce_text_change.after_id = None
+        return debounce_text_change
+    
+    def get_language_from_display(self, display_value, lang_display, auto_detect_text):
+        """Convert display language to language code"""
+        if display_value == auto_detect_text:
+            return "auto"
+        else:
+            return next((k for k, v in lang_display.items() if v == display_value), "auto")
+    
+    def fill_last_translated_text(self, src_text_widget):
+        """Fill source text with last translated text if available"""
+        if constant.last_translated_text:
+            try:
+                src_text_widget.delete("1.0", "end")
+                src_text_widget.insert("1.0", constant.last_translated_text)
+                # Reset modification flag
+                src_text_widget.edit_modified(False)
+            except Exception as e:
+                print(f"Error filling last translated text: {e}")
+    
+    def cleanup(self):
+        """Cleanup translation controller resources"""
+        # Cancel any pending auto-save timer
+        if self.auto_save_state.get("timer_id"):
+            try:
+                # Note: Cannot cancel after destruction, but we can clear the reference
+                self.auto_save_state["timer_id"] = None
+            except:
+                pass
+        
+        # Clear auto-save state
+        self.auto_save_state = {"saved": False, "timer_id": None, "last_content": ""}
 
 
 class MainWindow(ctk.CTkToplevel):
@@ -1287,7 +1766,8 @@ class MainWindow(ctk.CTkToplevel):
             print("Failed to save configuration")
         
         # Update system settings
-        self.translator.set_startup(self.translator.start_at_startup)
+        from VezylTranslatorProton.app import StartupManager
+        StartupManager.set_startup(self.translator.start_at_startup)
         self.gui_controller.setup_ctrl_tracking(self)
         
         # Update hotkey system
