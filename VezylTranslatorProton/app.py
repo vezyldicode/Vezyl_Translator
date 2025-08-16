@@ -315,7 +315,7 @@ class VezylTranslatorApp:
     def show_popup(self, text: str, x: int, y: int):
         """Show popup notification"""
         from VezylTranslatorElectron.popup_manager import show_popup_safe
-        from VezylTranslatorElectron.helpers import get_client_preferences
+        from VezylTranslatorNeutron.helpers import get_client_preferences
         
         language_interface, theme_interface = get_client_preferences()
         
@@ -330,7 +330,7 @@ class VezylTranslatorApp:
     def show_icon(self, text: str, x: int, y: int):
         """Show icon notification"""
         from VezylTranslatorElectron.popup_manager import show_icon_safe
-        from VezylTranslatorElectron.helpers import get_client_preferences
+        from VezylTranslatorNeutron.helpers import get_client_preferences
         
         language_interface, theme_interface = get_client_preferences()
         
@@ -345,7 +345,7 @@ class VezylTranslatorApp:
     def initialize_main_window(self):
         """Initialize the main GUI window"""
         from VezylTranslatorElectron.main_window import MainWindow
-        from VezylTranslatorElectron.helpers import get_client_preferences
+        from VezylTranslatorNeutron.helpers import get_client_preferences
         
         language_interface, theme_interface = get_client_preferences()
         
@@ -443,7 +443,7 @@ class VezylTranslatorApp:
     def start_tray_icon(self):
         """Start system tray icon"""
         from VezylTranslatorNeutron.tray_service import run_tray_icon_in_thread
-        from VezylTranslatorElectron.helpers import get_windows_theme
+        from VezylTranslatorNeutron.helpers import get_windows_theme
         from VezylTranslatorNeutron.clipboard_service import toggle_clipboard_watcher as unified_toggle_clipboard_watcher
         
         def safe_show_homepage():
@@ -501,7 +501,7 @@ class VezylTranslatorApp:
         
         # Apply startup optimizations
         try:
-            from VezylTranslatorElectron.helpers import optimize_startup, finish_startup
+            from VezylTranslatorNeutron.helpers import optimize_startup, finish_startup
             optimize_startup()
             fast_startup_enabled = True
             print("[FastStartup] Fast startup mode activated")
@@ -516,7 +516,7 @@ class VezylTranslatorApp:
         
         # Apply performance optimizations
         try:
-            from VezylTranslatorElectron.helpers import apply_performance_optimizations
+            from VezylTranslatorNeutron.helpers import apply_performance_optimizations
             apply_performance_optimizations()
         except ImportError:
             print("Performance patches not available")

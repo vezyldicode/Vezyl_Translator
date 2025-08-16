@@ -42,7 +42,7 @@ from VezylTranslatorProton.storage import (
     write_favorite_entry, read_favorite_entries, delete_favorite_entry, 
     delete_all_favorite_entries, update_favorite_note
 )
-from VezylTranslatorElectron.helpers import (
+from VezylTranslatorNeutron.helpers import (
     get_windows_theme, 
     show_confirm_popup, 
     get_client_preferences, 

@@ -310,7 +310,7 @@ class ClipboardService:
                 return
             
             try:
-                from VezylTranslatorElectron.helpers import get_windows_theme
+                from VezylTranslatorNeutron.helpers import get_windows_theme
                 
                 # Choose appropriate icon
                 if not translator_instance.clipboard_watcher_enabled:

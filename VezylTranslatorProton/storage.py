@@ -24,7 +24,7 @@ except ImportError:
     CRYPTO_AVAILABLE = False
     print("[WARNING] Crypto library not available - encryption disabled")
 
-from VezylTranslatorElectron.helpers import ensure_local_dir
+from VezylTranslatorNeutron.helpers import ensure_local_dir
 
 
 class StorageType(Enum):

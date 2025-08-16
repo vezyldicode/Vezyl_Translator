@@ -16,7 +16,7 @@ from VezylTranslatorNeutron import constant
 # Import consolidated UI modules
 from VezylTranslatorElectron.events import UIEvents
 from VezylTranslatorElectron.components import UIComponents
-from VezylTranslatorElectron.helpers import get_windows_theme
+from VezylTranslatorNeutron.helpers import get_windows_theme
 
 # Additional imports for GUIController
 import threading
@@ -488,7 +488,7 @@ class TabController:
     
     def get_history_data(self, search_keyword="", max_items=30):
         """Get filtered and limited history data"""
-        from VezylTranslatorElectron.helpers import search_entries
+        from VezylTranslatorNeutron.helpers import search_entries
         from VezylTranslatorProton.storage import read_history_entries
         
         log_file = constant.TRANSLATE_LOG_FILE
@@ -504,7 +504,7 @@ class TabController:
     
     def get_favorite_data(self, search_keyword="", max_items=30):
         """Get filtered and limited favorite data"""
-        from VezylTranslatorElectron.helpers import search_entries
+        from VezylTranslatorNeutron.helpers import search_entries
         from VezylTranslatorProton.storage import read_favorite_entries
         
         log_file = constant.FAVORITE_LOG_FILE
@@ -535,7 +535,7 @@ class TabController:
     
     def delete_all_history_entries_with_confirm(self, parent, refresh_callback):
         """Delete all history entries with confirmation"""
-        from VezylTranslatorElectron.helpers import ensure_local_dir, show_confirm_popup
+        from VezylTranslatorNeutron.helpers import ensure_local_dir, show_confirm_popup
         from VezylTranslatorProton.storage import delete_all_history_entries
         
         show_confirm_popup(
@@ -569,7 +569,7 @@ class TabController:
     
     def delete_all_favorite_entries_with_confirm(self, parent, refresh_callback):
         """Delete all favorite entries with confirmation"""
-        from VezylTranslatorElectron.helpers import ensure_local_dir, show_confirm_popup
+        from VezylTranslatorNeutron.helpers import ensure_local_dir, show_confirm_popup
         from VezylTranslatorProton.storage import delete_all_favorite_entries
         
         show_confirm_popup(
@@ -604,7 +604,7 @@ class TabController:
     def add_to_favorites(self, original_text, translated_text, src_lang, dest_lang, note=""):
         """Add entry to favorites"""
         try:
-            from VezylTranslatorElectron.helpers import ensure_local_dir
+            from VezylTranslatorNeutron.helpers import ensure_local_dir
             from VezylTranslatorProton.storage import write_favorite_entry
             
             ensure_local_dir(constant.LOCAL_DIR)
@@ -794,7 +794,7 @@ class TranslationController:
                     # Write to history if enabled
                     if write_history and getattr(self.translator, 'save_translate_history', True):
                         try:
-                            from VezylTranslatorElectron.helpers import ensure_local_dir
+                            from VezylTranslatorNeutron.helpers import ensure_local_dir
                             from VezylTranslatorProton.storage import write_log_entry
                             
                             ensure_local_dir(constant.LOCAL_DIR)
