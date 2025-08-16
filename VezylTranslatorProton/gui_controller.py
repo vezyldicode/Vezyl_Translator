@@ -8,7 +8,7 @@ import threading
 import tkinter as tk
 from concurrent.futures import ThreadPoolExecutor
 from VezylTranslatorNeutron import constant
-from VezylTranslatorProton.utils import get_windows_theme
+from VezylTranslatorElectron.helpers import get_windows_theme
 
 
 class GUIController:
@@ -49,6 +49,15 @@ class GUIController:
             return os.path.join(constant.RESOURCES_DIR, "logo.ico")
         else:
             return os.path.join(constant.RESOURCES_DIR, "logo_black.ico")
+    
+    def get_navigation_config(self):
+        """Get navigation bar configuration"""
+        return [
+            (os.path.join(constant.RESOURCES_DIR, "logo.png"), "Trang chủ"),
+            (os.path.join(constant.RESOURCES_DIR, "history.png"), "Lịch sử"),
+            (os.path.join(constant.RESOURCES_DIR, "favorite.png"), "Yêu thích"),
+            (os.path.join(constant.RESOURCES_DIR, "settings.png"), "Cài đặt")
+        ]
     
     def translate_async(self, widget_id, translate_function):
         """Execute translation asynchronously using ThreadPool"""

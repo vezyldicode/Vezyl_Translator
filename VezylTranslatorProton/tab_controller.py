@@ -5,15 +5,13 @@ Handles logic for different tabs (History, Favorites, etc.)
 
 import tkinter as tk
 from VezylTranslatorNeutron import constant
-from VezylTranslatorProton.utils import search_entries, ensure_local_dir, show_confirm_popup
-from VezylTranslatorProton.history_module import (
-    read_history_entries, delete_history_entry, delete_all_history_entries
-)
-from VezylTranslatorProton.favorite_module import (
+from VezylTranslatorElectron.helpers import search_entries, ensure_local_dir, show_confirm_popup
+from VezylTranslatorProton.storage import (
+    read_history_entries, delete_history_entry, delete_all_history_entries,
     read_favorite_entries, delete_favorite_entry, delete_all_favorite_entries,
     update_favorite_note, write_favorite_entry
 )
-from VezylTranslatorProton.clipboard_module import set_clipboard_text
+from VezylTranslatorNeutron.clipboard_service import set_clipboard_text
 
 
 class TabController:
@@ -256,3 +254,8 @@ class TabController:
             })
         
         return grouped
+    
+    def cleanup(self):
+        """Cleanup tab controller resources"""
+        # Clear any cached data or references
+        pass

@@ -36,33 +36,20 @@ import json
 from PIL import Image
 import customtkinter as ctk
 from VezylTranslatorNeutron import constant
-from VezylTranslatorProton.file_flow import (
-    pad, 
-    unpad, 
-    encrypt_aes, 
-    decrypt_aes, 
-    get_aes_key)
-from VezylTranslatorProton.history_module import (
-    write_log_entry,
-    read_history_entries,
-    delete_history_entry,
-    delete_all_history_entries
+from VezylTranslatorProton.storage import (
+    pad, unpad, encrypt_aes, decrypt_aes, get_aes_key,
+    write_log_entry, read_history_entries, delete_history_entry, delete_all_history_entries,
+    write_favorite_entry, read_favorite_entries, delete_favorite_entry, 
+    delete_all_favorite_entries, update_favorite_note
 )
-from VezylTranslatorProton.favorite_module import (
-    write_favorite_entry,
-    read_favorite_entries,
-    delete_favorite_entry,
-    delete_all_favorite_entries,
-    update_favorite_note
-)
-from VezylTranslatorProton.utils import (
+from VezylTranslatorElectron.helpers import (
     get_windows_theme, 
     show_confirm_popup, 
     get_client_preferences, 
     ensure_local_dir, 
     search_entries
 )
-from VezylTranslatorProton.clipboard_module import clipboard_watcher, get_clipboard_text, set_clipboard_text
+from VezylTranslatorNeutron.clipboard_service import clipboard_watcher, get_clipboard_text, set_clipboard_text
 from VezylTranslatorProton.translator import get_translation_engine
 
 import threading
@@ -92,7 +79,7 @@ def ensure_main_window_available(translator, main_window_instance, language_inte
     # If main window is not usable, try to recreate it
     try:
         print("Recreating main window from popup manager...")
-        from VezylTranslatorElectron.gui import MainWindow
+        from VezylTranslatorElectron.main_window import MainWindow
         
         # Create new main window
         new_window = MainWindow(translator, language_interface, theme_interface, _)

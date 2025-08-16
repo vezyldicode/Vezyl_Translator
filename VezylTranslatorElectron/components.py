@@ -1,6 +1,8 @@
 """
-UI Components Module for VezylTranslator
-Contains reusable UI component builders
+Unified UI Components Module for VezylTranslator
+Consolidated reusable UI component builders
+Author: Tuan Viet Nguyen
+Copyright (c) 2025 Vezyl. All rights reserved.
 """
 
 import os
@@ -14,12 +16,16 @@ from VezylTranslatorNeutron import constant
 
 
 class UIComponents:
+    """Unified UI component builder system"""
+    
     def __init__(self, translator, theme):
         self.translator = translator
         self.theme = theme
     
+    # === Image Loading ===
+    
     def load_image(self, filename, size=(24, 24), fallback_text=""):
-        """Load image with fallback"""
+        """Load image with fallback support"""
         try:
             if Image is None:
                 print(f"PIL not available, cannot load image {filename}")
@@ -28,16 +34,18 @@ class UIComponents:
             image = Image.open(img_path)
             return ctk.CTkImage(image, size=size)
         except Exception as e:
-            print(f"Không thể load ảnh {filename}: {e}")
+            print(f"Cannot load image {filename}: {e}")
             return None
     
+    # === Navigation Components ===
+    
     def create_navigation_bar(self, parent, nav_buttons_dict):
-        """Create navigation bar with buttons"""
+        """Create navigation sidebar with icon buttons"""
         nav_bar = ctk.CTkFrame(parent, width=70, fg_color="#23272f", border_width=0)
         nav_bar.pack(side="left", fill="y", padx=0, pady=0)
         nav_bar.pack_propagate(False)
         
-        # Load button images
+        # Navigation button configurations
         button_configs = [
             ("Trang chủ", "logo.png", "top"),
             ("Lịch sử", "history.png", "top"),
@@ -48,7 +56,7 @@ class UIComponents:
         for text, img_file, position in button_configs:
             img = self.load_image(img_file, (32, 32))
             
-            # Create container frame for each button to control positioning
+            # Container frame for button positioning
             btn_container = ctk.CTkFrame(nav_bar, fg_color="transparent", height=60)
             
             btn = ctk.CTkButton(
@@ -63,7 +71,7 @@ class UIComponents:
                 border_width=0
             )
             
-            # Position button with 2px left margin
+            # Position button with left margin
             btn.place(x=2, y=0)
             
             if position == "top":
@@ -75,17 +83,21 @@ class UIComponents:
         
         return nav_bar
     
+    # === Layout Components ===
+    
     def create_content_frame(self, parent):
-        """Create main content frame"""
+        """Create main content area frame"""
         content_frame = ctk.CTkFrame(parent, fg_color="#2d323e")
         content_frame.pack(side="left", fill="both", expand=True)
         return content_frame
     
     def create_tab_frame(self, parent):
-        """Create frame for tab content"""
+        """Create frame for tab content with standard padding"""
         frame = ctk.CTkFrame(parent, fg_color="#23272f")
         frame.pack(fill="both", expand=True, padx=60, pady=60)
         return frame
+    
+    # === Input Components ===
     
     def create_language_combo(self, parent, values, variable, width=180, command=None):
         """Create language selection combobox"""
@@ -101,7 +113,7 @@ class UIComponents:
         return combo
     
     def create_text_area(self, parent, font_size=18, text_color="#f5f5f5", bg_color="#23272f", read_only=False):
-        """Create text area widget"""
+        """Create text area widget with customizable styling"""
         text_widget = ctk.CTkTextbox(
             parent, 
             font=(self.translator.font, font_size, "bold"),
@@ -117,7 +129,7 @@ class UIComponents:
         return text_widget
     
     def create_text_frame_with_copy_button(self, parent, bg_color="#23272f", text_color="#f5f5f5", copy_callback=None, state=None):
-        """Create frame with text area and copy button"""
+        """Create frame with text area and integrated copy button"""
         frame = ctk.CTkFrame(parent, fg_color=bg_color)
         frame.grid_rowconfigure(0, weight=1)
         frame.grid_columnconfigure(0, weight=1)
@@ -129,7 +141,7 @@ class UIComponents:
         text_widget = self.create_text_area(frame, text_color=text_color, bg_color=bg_color, read_only=read_only)
         text_widget.grid(row=0, column=0, sticky="nsew")
         
-        # Copy button
+        # Copy button with save icon
         copy_img = self.load_image("save_btn.png", (24, 24))
         copy_btn = ctk.CTkButton(
             frame,
@@ -146,7 +158,7 @@ class UIComponents:
         return frame, text_widget, copy_btn
     
     def create_icon_button(self, parent, image_file, size=(24, 24), command=None):
-        """Create icon-only button"""
+        """Create icon-only button with transparent background"""
         img = self.load_image(image_file, size)
         
         btn = ctk.CTkButton(
@@ -161,6 +173,8 @@ class UIComponents:
         )
         
         return btn
+    
+    # === Scrollable Components ===
     
     def create_scrollable_frame(self, parent, bg_color="#23272f"):
         """Create scrollable frame with canvas and scrollbar"""
@@ -179,8 +193,10 @@ class UIComponents:
         
         return scrollable_frame, canvas, scrollbar, content_frame, window_id
     
+    # === Header Components ===
+    
     def create_title_with_search(self, parent, title_text, search_var, search_placeholder="🔍 Tìm kiếm..."):
-        """Create title frame with search entry"""
+        """Create title frame with integrated search entry"""
         title_frame = ctk.CTkFrame(parent, fg_color="transparent")
         
         # Title
@@ -204,8 +220,10 @@ class UIComponents:
         
         return title_frame, title, search_entry
     
+    # === Card Components ===
+    
     def create_entry_card(self, parent, bg_color="#23272f", border_color="#444", corner_radius=8):
-        """Create entry card frame"""
+        """Create entry card frame with border styling"""
         entry_frame = ctk.CTkFrame(
             parent,
             fg_color=bg_color,
@@ -217,8 +235,10 @@ class UIComponents:
         
         return entry_frame
     
+    # === Label Components ===
+    
     def create_date_label(self, parent, date_text, width=110):
-        """Create date label for grouping"""
+        """Create date label for entry grouping"""
         date_label = ctk.CTkLabel(
             parent,
             text=date_text,
@@ -231,7 +251,7 @@ class UIComponents:
         return date_label
     
     def create_info_label(self, parent, info_text, text_color="#888"):
-        """Create info label (time, language info, etc.)"""
+        """Create info label for metadata (time, language, etc.)"""
         info_label = ctk.CTkLabel(
             parent, 
             text=info_text, 
@@ -242,7 +262,7 @@ class UIComponents:
         return info_label
     
     def create_content_label(self, parent, content_text, text_color="#f5f5f5", bold=False):
-        """Create content label"""
+        """Create content display label"""
         font_style = "bold" if bold else "normal"
         content_label = ctk.CTkLabel(
             parent,
@@ -255,8 +275,10 @@ class UIComponents:
         
         return content_label
     
+    # === Settings Components ===
+    
     def create_settings_group_label(self, parent, group_name):
-        """Create settings group label"""
+        """Create settings section group label"""
         group_label = ctk.CTkLabel(
             parent, 
             text=group_name, 
@@ -278,7 +300,7 @@ class UIComponents:
         return field_label
     
     def create_checkbox_field(self, parent, value):
-        """Create checkbox field for settings"""
+        """Create checkbox field for boolean settings"""
         var = tk.BooleanVar(value=value)
         checkbox = ctk.CTkCheckBox(parent, variable=var, text="")
         checkbox.var = var
@@ -286,7 +308,7 @@ class UIComponents:
         return checkbox
     
     def create_entry_field(self, parent, value="", width=200):
-        """Create entry field for settings"""
+        """Create text entry field for settings"""
         entry = ctk.CTkEntry(parent, width=width)
         if value:
             entry.insert(0, str(value))
@@ -294,7 +316,7 @@ class UIComponents:
         return entry
     
     def create_readonly_entry_field(self, parent, value="", cursor="hand2", width=200):
-        """Create readonly entry field (for hotkeys)"""
+        """Create readonly entry field (for hotkey display)"""
         var = tk.StringVar(value=value)
         entry = ctk.CTkEntry(parent, textvariable=var, state="readonly", width=width)
         entry.var = var
@@ -318,8 +340,10 @@ class UIComponents:
         
         return combo
     
+    # === Action Components ===
+    
     def create_save_button(self, parent, text="Lưu", width=120, command=None):
-        """Create save button"""
+        """Create save/action button"""
         save_btn = ctk.CTkButton(
             parent, 
             text=text, 
@@ -330,7 +354,7 @@ class UIComponents:
         return save_btn
     
     def create_copyright_label(self, parent, copyright_text):
-        """Create copyright label"""
+        """Create copyright/attribution label"""
         copyright_label = ctk.CTkLabel(
             parent,
             text=copyright_text,
@@ -339,3 +363,16 @@ class UIComponents:
         )
         
         return copyright_label
+    
+    # === Cleanup ===
+    
+    def cleanup(self):
+        """Cleanup UI components resources"""
+        # Clear any cached resources
+        pass
+
+
+# === Legacy Support ===
+# For backward compatibility with existing imports
+
+__all__ = ['UIComponents']

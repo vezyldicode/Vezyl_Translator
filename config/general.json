@@ -13,14 +13,10 @@
   "start_at_startup": false,
   "show_homepage_at_startup": true,
   "always_show_transtale": false,
-  "dest_lang": "en",
+  "dest_lang": "vi",
   "translation_model": "google",
   "translation_models": {
-    "google": "🌐 Google Translator",
-    "bing": "🔍 Bing Translator",
-    "deepl": "🔬 DeepL Translator",
-    "marian": "🤖 Marian MT (Local)",
-    "opus": "📚 OPUS-MT (Local)"
+    "google": "🌐 Google Translator"
   },
   "lang_display": {
     "en": "🇺🇸 English",

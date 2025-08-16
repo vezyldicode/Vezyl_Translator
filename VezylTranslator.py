@@ -69,7 +69,7 @@ def toggle_clipboard_watcher():
     """Toggle clipboard watcher - legacy support"""
     app = get_app_instance()
     if app:
-        from VezylTranslatorProton.clipboard_module import toggle_clipboard_watcher as unified_toggle
+        from VezylTranslatorNeutron.clipboard_service import toggle_clipboard_watcher as unified_toggle
         unified_toggle(app)
 
 
@@ -114,7 +114,7 @@ def on_quit(icon, item):
             print(f"Cleanup error: {e}")
         
         try:
-            from VezylTranslatorProton.clipboard_module import clear_format_cache
+            from VezylTranslatorNeutron.clipboard_service import clear_format_cache
             clear_format_cache()
         except ImportError:
             pass

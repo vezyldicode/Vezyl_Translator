@@ -11,7 +11,7 @@ import tkinter.messagebox as mb
 import toml
 
 from VezylTranslatorNeutron import constant
-from VezylTranslatorProton.crypto import decode_base64
+from VezylTranslatorProton.storage import decode_base64
 
 # Constants
 LOG_DIR = os.path.join(constant.LOCAL_DIR, "log")

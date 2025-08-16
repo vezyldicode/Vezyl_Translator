@@ -7,7 +7,7 @@ import os
 import winsound
 from VezylTranslatorNeutron import constant
 from VezylTranslatorProton.config import get_config_manager
-from VezylTranslatorProton.hotkey_manager_module import register_hotkey, unregister_hotkey
+from VezylTranslatorNeutron.hotkey_service import register_hotkey, unregister_hotkey
 
 
 class SettingsController:
@@ -230,7 +230,7 @@ class SettingsController:
     def _toggle_clipboard_watcher(self):
         """Callback for clipboard hotkey"""
         try:
-            from VezylTranslatorProton.clipboard_module import toggle_clipboard_watcher
+            from VezylTranslatorNeutron.clipboard_service import toggle_clipboard_watcher
             toggle_clipboard_watcher(self.translator)
         except Exception as e:
             print(f"Error toggling clipboard watcher: {e}")
@@ -242,3 +242,8 @@ class SettingsController:
     def get_copyright_text(self):
         """Get copyright text for footer"""
         return f"{constant.SOFTWARE}. version {constant.SOFTWARE_VERSION} - Copyright © 2025 by Vezyl"
+    
+    def cleanup(self):
+        """Cleanup settings controller resources"""
+        # Clear callback reference
+        self.show_homepage_callback = None

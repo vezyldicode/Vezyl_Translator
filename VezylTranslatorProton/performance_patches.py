@@ -68,7 +68,7 @@ def optimize_history_rendering():
     """
     try:
         # Patch search_entries để giới hạn kết quả
-        from VezylTranslatorProton.utils import search_entries
+        from VezylTranslatorElectron.helpers import search_entries
         
         original_search_entries = search_entries
         
@@ -83,8 +83,8 @@ def optimize_history_rendering():
             return results
         
         # Replace function
-        import VezylTranslatorProton.utils as utils_module
-        utils_module.search_entries = optimized_search_entries
+        import VezylTranslatorElectron.helpers as helpers_module
+        helpers_module.search_entries = optimized_search_entries
         
         print("[OK] History rendering optimized")
         return True
@@ -99,7 +99,7 @@ def optimize_clipboard_polling():
     """
     try:
         # Patch time.sleep trong clipboard module
-        import VezylTranslatorProton.clipboard_module as clipboard_module
+        import VezylTranslatorNeutron.clipboard_service as clipboard_service
         
         original_sleep = time.sleep
         
@@ -114,7 +114,7 @@ def optimize_clipboard_polling():
             return original_sleep(seconds)
         
         # Apply trong scope của clipboard module
-        clipboard_module.time.sleep = adaptive_sleep
+        clipboard_service.time.sleep = adaptive_sleep
         
         print("[OK] Clipboard polling optimized")
         return True

@@ -6,8 +6,8 @@ Handles translation logic and auto-save functionality
 import threading
 from VezylTranslatorNeutron import constant
 from VezylTranslatorProton.translator import get_translation_engine
-from VezylTranslatorProton.history_module import write_log_entry
-from VezylTranslatorProton.utils import ensure_local_dir
+from VezylTranslatorProton.storage import write_log_entry
+from VezylTranslatorElectron.helpers import ensure_local_dir
 
 
 class TranslationController:
@@ -198,3 +198,16 @@ class TranslationController:
                 src_text_widget.edit_modified(False)
             except Exception as e:
                 print(f"Error filling last translated text: {e}")
+    
+    def cleanup(self):
+        """Cleanup translation controller resources"""
+        # Cancel any pending auto-save timer
+        if self.auto_save_state.get("timer_id"):
+            try:
+                # Note: Cannot cancel after destruction, but we can clear the reference
+                self.auto_save_state["timer_id"] = None
+            except:
+                pass
+        
+        # Clear auto-save state
+        self.auto_save_state = {"saved": False, "timer_id": None, "last_content": ""}

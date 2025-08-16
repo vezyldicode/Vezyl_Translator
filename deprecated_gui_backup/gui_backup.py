@@ -24,18 +24,10 @@ from VezylTranslatorProton.utils import (
     search_entries
 )
 from VezylTranslatorProton.translator import get_translation_engine
-from VezylTranslatorProton.history_module import (
-    write_log_entry,
-    read_history_entries,
-    delete_history_entry,
-    delete_all_history_entries
-)
-from VezylTranslatorProton.favorite_module import (
-    write_favorite_entry,
-    read_favorite_entries,
-    delete_favorite_entry,
-    delete_all_favorite_entries,
-    update_favorite_note
+from VezylTranslatorProton.storage import (
+    write_log_entry, read_history_entries, delete_history_entry, delete_all_history_entries,
+    write_favorite_entry, read_favorite_entries, delete_favorite_entry, 
+    delete_all_favorite_entries, update_favorite_note
 )
 from VezylTranslatorNeutron import constant
 # Config imports updated to use new config system

@@ -278,7 +278,7 @@ class VezylTranslatorApp:
     def show_popup(self, text: str, x: int, y: int):
         """Show popup notification"""
         from VezylTranslatorElectron.popup_manager import show_popup_safe
-        from VezylTranslatorProton.utils import get_client_preferences
+        from VezylTranslatorElectron.helpers import get_client_preferences
         
         language_interface, theme_interface = get_client_preferences()
         
@@ -293,7 +293,7 @@ class VezylTranslatorApp:
     def show_icon(self, text: str, x: int, y: int):
         """Show icon notification"""
         from VezylTranslatorElectron.popup_manager import show_icon_safe
-        from VezylTranslatorProton.utils import get_client_preferences
+        from VezylTranslatorElectron.helpers import get_client_preferences
         
         language_interface, theme_interface = get_client_preferences()
         
@@ -307,8 +307,8 @@ class VezylTranslatorApp:
     
     def initialize_main_window(self):
         """Initialize the main GUI window"""
-        from VezylTranslatorElectron.gui import MainWindow
-        from VezylTranslatorProton.utils import get_client_preferences
+        from VezylTranslatorElectron.main_window import MainWindow
+        from VezylTranslatorElectron.helpers import get_client_preferences
         
         language_interface, theme_interface = get_client_preferences()
         
@@ -322,7 +322,7 @@ class VezylTranslatorApp:
     
     def start_clipboard_watcher(self):
         """Start clipboard monitoring thread"""
-        from VezylTranslatorProton.clipboard_module import clipboard_watcher
+        from VezylTranslatorNeutron.clipboard_service import clipboard_watcher
         
         if not self.main_window:
             print("Cannot start clipboard watcher: Main window not initialized")
@@ -346,8 +346,8 @@ class VezylTranslatorApp:
     def start_hotkey_system(self) -> bool:
         """Initialize hotkey system"""
         try:
-            from VezylTranslatorProton.hotkey_manager_module import register_hotkey
-            from VezylTranslatorProton.clipboard_module import toggle_clipboard_watcher as unified_toggle_clipboard_watcher
+            from VezylTranslatorNeutron.hotkey_service import register_hotkey
+            from VezylTranslatorNeutron.clipboard_service import toggle_clipboard_watcher as unified_toggle_clipboard_watcher
         except ImportError as e:
             print(f"Failed to import hotkey modules: {e}")
             return False
@@ -389,7 +389,7 @@ class VezylTranslatorApp:
     def stop_hotkey_system(self) -> bool:
         """Stop hotkey system"""
         try:
-            from VezylTranslatorProton.hotkey_manager_module import unregister_hotkey
+            from VezylTranslatorNeutron.hotkey_service import unregister_hotkey
         except ImportError as e:
             print(f"Failed to import hotkey modules: {e}")
             return False
@@ -405,9 +405,9 @@ class VezylTranslatorApp:
     
     def start_tray_icon(self):
         """Start system tray icon"""
-        from VezylTranslatorProton.tray_module import run_tray_icon_in_thread
-        from VezylTranslatorProton.utils import get_windows_theme
-        from VezylTranslatorProton.clipboard_module import toggle_clipboard_watcher as unified_toggle_clipboard_watcher
+        from VezylTranslatorNeutron.tray_service import run_tray_icon_in_thread
+        from VezylTranslatorElectron.helpers import get_windows_theme
+        from VezylTranslatorNeutron.clipboard_service import toggle_clipboard_watcher as unified_toggle_clipboard_watcher
         
         def safe_show_homepage():
             """Safely show homepage with main window recreation if needed"""
@@ -440,7 +440,7 @@ class VezylTranslatorApp:
             
             try:
                 # Cleanup clipboard cache
-                from VezylTranslatorProton.clipboard_module import clear_format_cache
+                from VezylTranslatorNeutron.clipboard_service import clear_format_cache
                 clear_format_cache()
             except ImportError:
                 pass
@@ -464,10 +464,10 @@ class VezylTranslatorApp:
         
         # Apply startup optimizations
         try:
-            from VezylTranslatorProton.startup_optimizer import optimize_imports, finish_startup_optimization
-            fast_startup_enabled = optimize_imports()
-            if fast_startup_enabled:
-                print("[FastStartup] Fast startup mode activated")
+            from VezylTranslatorElectron.helpers import optimize_startup, finish_startup
+            optimize_startup()
+            fast_startup_enabled = True
+            print("[FastStartup] Fast startup mode activated")
         except ImportError:
             print("Startup optimizer not available")
             fast_startup_enabled = False
@@ -479,8 +479,8 @@ class VezylTranslatorApp:
         
         # Apply performance optimizations
         try:
-            from VezylTranslatorProton.performance_patches import apply_all_optimizations
-            apply_all_optimizations()
+            from VezylTranslatorElectron.helpers import apply_performance_optimizations
+            apply_performance_optimizations()
         except ImportError:
             print("Performance patches not available")
         except Exception as e:
@@ -514,13 +514,13 @@ class VezylTranslatorApp:
             
             # Finish startup optimization after window is shown
             if fast_startup_enabled:
-                self.main_window.after(2000, lambda: finish_startup_optimization())
+                self.main_window.after(2000, lambda: finish_startup())
         else:
             self.main_window.withdraw()
             
             # Finish startup optimization for hidden startup
             if fast_startup_enabled:
-                self.main_window.after(3000, lambda: finish_startup_optimization())
+                self.main_window.after(3000, lambda: finish_startup())
         
         # Start tray icon
         self.start_tray_icon()
