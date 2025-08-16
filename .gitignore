@@ -7,8 +7,6 @@ backup/
 README_for_dev.md
 *.exe
 !VezylTranslatorCrashHandler.exe
-!VezylTranslator.py
-!VezylTranslatorCrashHandler.py
 
 # Local files
 *.log
